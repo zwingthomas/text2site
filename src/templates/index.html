@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Messages</title>
+</head>
+<body>
+    <h1>Hello World</h1>
+    <h2>Received Messages:</h2>
+    <ul id="message-list">
+        <!-- Messages will be dynamically inserted here -->
+    </ul>
+
+    <script>
+        // Function to fetch new messages from the server
+        function fetchMessages() {
+            fetch('/get_messages')
+                .then(response => response.json())
+                .then(data => {
+                    const messageList = document.getElementById('message-list');
+                    messageList.innerHTML = ''; // Clear the current list
+
+                    data.forEach(message => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = message;
+                        messageList.appendChild(listItem);
+                    });
+                });
+        }
+
+        // Fetch messages every 2 seconds
+        setInterval(fetchMessages, 2000);
+
+        // Initial fetch when the page loads
+        fetchMessages();
+    </script>
+</body>
+</html>
