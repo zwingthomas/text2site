@@ -1,2 +1,10 @@
-terraform/terraform.tfvars
+terraform-AWS/terraform.tfvars
+terraform-GCP/terraform.tfvars
+terraform-AZURE/terraform.tfvars
+terraform-AWS/.terraform/*
+terraform-GCP/.terraform/*
+terraform-AZURE/.terraform/*
+terraform-AWS/.terraform.locl.hcl
+terraform-GCP/.terraform.lock.hcl
+terraform-AZURE/.terraform.lock.hcl
 .nvimlog

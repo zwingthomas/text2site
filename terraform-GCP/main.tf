@@ -1,9 +1,3 @@
-provider "google" {
-  project     = var.project_id
-  region      = var.region
-  credentials = file(var.credentials_file)
-}
-
 # Custom service account for nodes
 resource "google_service_account" "cluster_service_account" {
   account_id   = "gke-node-sa"
@@ -29,7 +23,7 @@ resource "google_container_cluster" "primary" {
   remove_default_node_pool = true
   initial_node_count = 1
 
-  locations = var.zones
+  node_locations = var.zones
 
   network    = google_compute_network.vpc_network.id
   subnetwork = google_compute_subnetwork.subnet.id
@@ -45,14 +39,14 @@ resource "google_container_cluster" "primary" {
     master_ipv4_cidr_block  = "172.16.0.0/28"
   }
 
-  master_authorized_networks_config {
-    cidr_blocks = [
-      {
-        cidr_block   = var.YOUR_TRUSTED_IP_RANGE
-        display_name = "Admin network"
-      }
-    ]
-  }
+#   master_authorized_networks_config {
+#     cidr_blocks = [
+#       {
+#         cidr_block   = var.YOUR_TRUSTED_IP_RANGE
+#         display_name = "Admin network"
+#       }
+#     ]
+#   }
 
   addons_config {
     network_policy_config {
@@ -67,7 +61,7 @@ resource "google_container_cluster" "primary" {
 
   logging_service    = var.enable_logging ? "logging.googleapis.com/kubernetes" : "none"
   monitoring_service = var.enable_monitoring ? "monitoring.googleapis.com/kubernetes" : "none"
-
+  
   node_config {
     service_account = google_service_account.cluster_service_account.email
     tags            = ["gke-node"]
@@ -79,12 +73,12 @@ resource "google_container_cluster" "primary" {
     }
   }
 
+#   management {
+#     auto_upgrade = true
+#     auto_repair = true
+#   }
   enable_shielded_nodes = true
 
-  management {
-    auto_upgrade = true
-    auto_repair  = true
-  }
 }
 
 # Node Pool

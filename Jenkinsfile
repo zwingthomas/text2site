@@ -2,70 +2,36 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'CLOUD_PROVIDER', choices: ['aws', 'gcp', 'azure'], description: 'Select cloud provider')
+        choice(name: 'ACTION', choices: ['deploy', 'destroy'], description: 'Select action to perform')
+        choice(name: 'CLOUD_PROVIDER', choices: ['aws', 'gcp', 'azure', 'all'], description: 'Select cloud provider(s)')
     }
 
     environment {
-        CLOUD_PROVIDER = "${params.CLOUD_PROVIDER}"
-
         // Common environment variables
-        DOCKER_IMAGE_NAME           = 'hello-world-app'
-        DOCKER_IMAGE_TAG            = "${env.BUILD_NUMBER}"
-        twilio_auth_token           = credentials('twilio-auth-token')
-        APPLICATION_URL             = 'http://text18449410220anything-zwinger.com'
-
-        // Cloud-specific environment variables (will be set in 'Setup Environment' stage)
-        CLOUD_REGION                = ''
-        CONTAINER_REGISTRY_URI      = ''
-        CLUSTER_NAME                = ''
-        SERVICE_NAME                = ''
-        TASK_EXECUTION_ROLE_ARN     = ''
-        TASK_ROLE_ARN               = ''
+        DOCKER_IMAGE_NAME   = 'hello-world-app'
+        DOCKER_IMAGE_TAG    = "${env.BUILD_NUMBER}"
+        twilio_auth_token   = credentials('twilio-auth-token')
+        APPLICATION_URL     = 'https://your-common-domain.com' // Replace with your actual domain
     }
 
     stages {
-        stage('Setup Environment') {
-            steps {
-                script {
-                    if (CLOUD_PROVIDER == 'aws') {
-                        env.CLOUD_REGION                = 'us-east-1'
-                        env.CONTAINER_REGISTRY_URI      = '354923279633.dkr.ecr.us-east-1.amazonaws.com/hello-world-repo'
-                        env.CLUSTER_NAME                = 'hello-world-app-cluster'
-                        env.SERVICE_NAME                = 'hello-world-app-service'
-                        env.TASK_EXECUTION_ROLE_ARN     = 'arn:aws:iam::354923279633:role/hello-world-app-ecs-task-execution-role'
-                        env.TASK_ROLE_ARN               = 'arn:aws:iam::354923279633:role/hello-world-app-task-role'
-                    } else if (CLOUD_PROVIDER == 'gcp') {
-                        env.CLOUD_REGION                = 'us-central1'
-                        env.CONTAINER_REGISTRY_URI      = 'gcr.io/your-project-id/hello-world-repo'
-                        env.CLUSTER_NAME                = 'hello-world-app-cluster-gcp'
-                        env.SERVICE_NAME                = 'hello-world-app-service-gcp'
-                        // Set GCP-specific roles or service accounts if needed
-                    } else if (CLOUD_PROVIDER == 'azure') {
-                        env.CLOUD_REGION                = 'eastus'
-                        env.CONTAINER_REGISTRY_URI      = 'yourregistry.azurecr.io/hello-world-repo'
-                        env.CLUSTER_NAME                = 'hello-world-app-cluster-azure'
-                        env.SERVICE_NAME                = 'hello-world-app-service-azure'
-                        // Set Azure-specific roles or service principals if needed
-                    } else {
-                        error "Unsupported cloud provider: ${CLOUD_PROVIDER}"
-                    }
-                }
-            }
-        }
-
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/zwingthomas/Text2Site.git'
             }
         }
 
+        // Only build and push Docker image if the action is 'deploy'
         stage('Build Docker Image') {
+            when {
+                expression { params.ACTION == 'deploy' }
+            }
             steps {
                 script {
-                    echo "Building Docker Image: ${CONTAINER_REGISTRY_URI}:${DOCKER_IMAGE_TAG}"
+                    echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                     try {
                         sh """
-                        docker build -t ${CONTAINER_REGISTRY_URI}:${DOCKER_IMAGE_TAG} ./src
+                        docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ./src
                         """
                         echo "Docker Image built successfully."
                     } catch (Exception e) {
@@ -77,174 +43,189 @@ pipeline {
             }
         }
 
-        stage('Push to Container Registry') {
+        stage('Push to Container Registries') {
+            when {
+                expression { params.ACTION == 'deploy' }
+            }
             steps {
                 script {
-                    if (CLOUD_PROVIDER == 'aws') {
-                        echo "Logging in to AWS ECR..."
-                        sh '''
-                        aws ecr get-login-password --region ${CLOUD_REGION} | docker login --username AWS --password-stdin ${CONTAINER_REGISTRY_URI}
-                        if [ $? -ne 0 ]; then
-                            echo "Failed to log in to ECR"
-                            exit 1
-                        fi
-                        '''
-                        echo "Pushing Docker Image: ${CONTAINER_REGISTRY_URI}:${DOCKER_IMAGE_TAG}"
-                        sh """
-                        docker push ${CONTAINER_REGISTRY_URI}:${DOCKER_IMAGE_TAG}
-                        """
-                    } else if (CLOUD_PROVIDER == 'gcp') {
-                        echo "Logging in to GCP Container Registry..."
-                        sh '''
-                        gcloud auth configure-docker
-                        '''
-                        echo "Pushing Docker Image: ${CONTAINER_REGISTRY_URI}:${DOCKER_IMAGE_TAG}"
-                        sh """
-                        docker push ${CONTAINER_REGISTRY_URI}:${DOCKER_IMAGE_TAG}
-                        """
-                    } else if (CLOUD_PROVIDER == 'azure') {
-                        echo "Logging in to Azure Container Registry..."
-                        sh '''
-                        az acr login --name yourregistry
-                        '''
-                        echo "Pushing Docker Image: ${CONTAINER_REGISTRY_URI}:${DOCKER_IMAGE_TAG}"
-                        sh """
-                        docker push ${CONTAINER_REGISTRY_URI}:${DOCKER_IMAGE_TAG}
-                        """
+                    def providers = []
+                    if (params.CLOUD_PROVIDER == 'all') {
+                        providers = ['aws', 'gcp', 'azure']
+                    } else {
+                        providers = [params.CLOUD_PROVIDER]
+                    }
+
+                    for (provider in providers) {
+                        if (provider == 'aws') {
+                            echo "Pushing Docker Image to AWS ECR..."
+                            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                                sh """
+                                aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 354923279633.dkr.ecr.us-east-1.amazonaws.com
+                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} 354923279633.dkr.ecr.us-east-1.amazonaws.com/hello-world-repo:${DOCKER_IMAGE_TAG}
+                                docker push 354923279633.dkr.ecr.us-east-1.amazonaws.com/hello-world-repo:${DOCKER_IMAGE_TAG}
+                                """
+                            }
+                        } else if (provider == 'gcp') {
+                            echo "Pushing Docker Image to GCP Container Registry..."
+                            withCredentials([file(credentialsId: 'gcp-credentials-file', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                                sh """
+                                gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
+                                gcloud auth configure-docker
+                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} gcr.io/your-project-id/hello-world-repo:${DOCKER_IMAGE_TAG}
+                                docker push gcr.io/your-project-id/hello-world-repo:${DOCKER_IMAGE_TAG}
+                                """
+                            }
+                        } else if (provider == 'azure') {
+                            echo "Pushing Docker Image to Azure Container Registry..."
+                            withCredentials([usernamePassword(credentialsId: 'azure-acr-credentials', usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD')]) {
+                                sh """
+                                docker login yourregistry.azurecr.io -u $ACR_USERNAME -p $ACR_PASSWORD
+                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} yourregistry.azurecr.io/hello-world-repo:${DOCKER_IMAGE_TAG}
+                                docker push yourregistry.azurecr.io/hello-world-repo:${DOCKER_IMAGE_TAG}
+                                """
+                            }
+                        }
                     }
                 }
             }
         }
 
-        stage('Terraform Init and Apply') {
-            steps {
-                dir("terraform-${CLOUD_PROVIDER.toUpperCase()}") {
-                    sh '''
-                    terraform init
-                    terraform apply -auto-approve -var="twilio_auth_token=${twilio_auth_token}"
-                    '''
-                }
-            }
-        }
-
-        // Clean up resources before terraform destroy (if necessary)
-        stage('Cleanup Resources') {
+        stage('Terraform Init and Apply/Destroy') {
             steps {
                 script {
-                    if (CLOUD_PROVIDER == 'aws') {
-                        echo "Cleaning up AWS ECS services and tasks"
-                        sh """
-                        aws ecs update-service \
-                            --cluster ${CLUSTER_NAME} \
-                            --service ${SERVICE_NAME} \
-                            --desired-count 0
-                        aws ecs wait services-stable --cluster ${CLUSTER_NAME} --services ${SERVICE_NAME}
-                        aws ecs delete-service \
-                            --cluster ${CLUSTER_NAME} \
-                            --service ${SERVICE_NAME} \
-                            --force
-                        aws ecs delete-cluster --cluster ${CLUSTER_NAME}
-                        """
-                    } else if (CLOUD_PROVIDER == 'gcp') {
-                        echo "Cleaning up GCP resources"
-                        // Add GCP cleanup commands here
-                    } else if (CLOUD_PROVIDER == 'azure') {
-                        echo "Cleaning up Azure resources"
-                        // Add Azure cleanup commands here
+                    def providers = []
+                    if (params.CLOUD_PROVIDER == 'all') {
+                        providers = ['aws', 'gcp', 'azure']
+                    } else {
+                        providers = [params.CLOUD_PROVIDER]
                     }
-                }
-            }
-        }
 
-        stage('Deploy Application') {
-            steps {
-                script {
-                    if (CLOUD_PROVIDER == 'aws') {
-                        // Register a new task definition with the new image
-                        def taskDefinition = sh(
-                            script: """
-                            aws ecs register-task-definition \
-                                --family hello-world-task \
-                                --task-role-arn ${TASK_ROLE_ARN} \
-                                --execution-role-arn ${TASK_EXECUTION_ROLE_ARN} \
-                                --network-mode awsvpc \
-                                --requires-compatibilities FARGATE \
-                                --cpu "256" \
-                                --memory "512" \
-                                --container-definitions '[
-                                    {
-                                        "name": "app",
-                                        "image": "${CONTAINER_REGISTRY_URI}:${DOCKER_IMAGE_TAG}",
-                                        "essential": true,
-                                        "portMappings": [
-                                            {
-                                                "containerPort": 5000,
-                                                "protocol": "tcp"
-                                            }
-                                        ],
-                                        "environment": [
-                                            {
-                                                "name": "twilio_auth_token",
-                                                "value": "${twilio_auth_token}"
-                                            }
-                                        ],
-                                        "logConfiguration": {
-                                            "logDriver": "awslogs",
-                                            "options": {
-                                                "awslogs-group": "/ecs/hello-world-app",
-                                                "awslogs-region": "${CLOUD_REGION}",
-                                                "awslogs-stream-prefix": "ecs"
-                                            }
-                                        }
+                    for (provider in providers) {
+                        dir("terraform-${provider.toUpperCase()}") {
+                            if (provider == 'aws') {
+                                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                                    sh "terraform init"
+                                    if (params.ACTION == 'deploy') {
+                                        echo "Applying Terraform configuration for AWS..."
+                                        sh """
+                                        terraform apply -auto-approve \
+                                            -var="twilio_auth_token=${twilio_auth_token}" \
+                                            -var="docker_image_tag=${DOCKER_IMAGE_TAG}"
+                                        """
+                                    } else if (params.ACTION == 'destroy') {
+                                        echo "Destroying AWS resources..."
+                                        sh "terraform destroy -auto-approve"
                                     }
-                                ]'
-                            """,
-                            returnStdout: true
-                        ).trim()
-                        
-                        // Extract task definition ARN
-                        def taskDefArn = readJSON(text: taskDefinition).taskDefinition.taskDefinitionArn
-                        
-                        // Update ECS service to use the new task definition
-                        sh """
-                        aws ecs update-service \
-                            --cluster ${CLUSTER_NAME} \
-                            --service ${SERVICE_NAME} \
-                            --task-definition ${taskDefArn} \
-                            --force-new-deployment
-                        """
-                    } else if (CLOUD_PROVIDER == 'gcp') {
-                        withCredentials([
-                            file(credentialsId: 'gcp-credentials-file', variable: 'GOOGLE_APPLICATION_CREDENTIALS')
-                        ]) {
-                                dir("terraform-${CLOUD_PROVIDER.toUpperCase()}") {
-                                    sh """
-                                    terraform init
-                                    terraform apply -auto-approve \
-                                        -var="twilio_auth_token=${twilio_auth_token}" \
-                                        -var="docker_image=${CONTAINER_REGISTRY_URI}:${DOCKER_IMAGE_TAG}" \
-                                        -var="YOUR_TRUSTED_IP_RANGE=${YOUR_TRUSTED_IP_RANGE}" \
-                                        -var="enable_logging=true" \
-                                        -var="enable_monitoring=true"
-                                    """
+                                }
+                            } else if (provider == 'gcp') {
+                                withCredentials([file(credentialsId: 'gcp-credentials-file', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                                    sh "terraform init"
+                                    if (params.ACTION == 'deploy') {
+                                        echo "Applying Terraform configuration for GCP..."
+                                        sh """
+                                        terraform apply -auto-approve \
+                                            -var="twilio_auth_token=${twilio_auth_token}" \
+                                            -var="docker_image_tag=${DOCKER_IMAGE_TAG}"
+                                        """
+                                    } else if (params.ACTION == 'destroy') {
+                                        echo "Destroying GCP resources..."
+                                        sh "terraform destroy -auto-approve"
+                                    }
+                                }
+                            } else if (provider == 'azure') {
+                                withCredentials([
+                                    string(credentialsId: 'azure-client-id', variable: 'ARM_CLIENT_ID'),
+                                    string(credentialsId: 'azure-client-secret', variable: 'ARM_CLIENT_SECRET'),
+                                    string(credentialsId: 'azure-subscription-id', variable: 'ARM_SUBSCRIPTION_ID'),
+                                    string(credentialsId: 'azure-tenant-id', variable: 'ARM_TENANT_ID')
+                                ]) {
+                                    sh "terraform init"
+                                    if (params.ACTION == 'deploy') {
+                                        echo "Applying Terraform configuration for Azure..."
+                                        sh """
+                                        terraform apply -auto-approve \
+                                            -var="twilio_auth_token=${twilio_auth_token}" \
+                                            -var="docker_image_tag=${DOCKER_IMAGE_TAG}"
+                                        """
+                                    } else if (params.ACTION == 'destroy') {
+                                        echo "Destroying Azure resources..."
+                                        sh "terraform destroy -auto-approve"
+                                    }
                                 }
                             }
-                    } else if (CLOUD_PROVIDER == 'azure') {
-                        // Deploy to Azure (e.g., AKS or App Service)
-                        echo "Deploying to Azure..."
+                        }
+                    }
+                }
+            }
+        }
+
+        // Only set up the global load balancer if deploying to all providers
+        stage('Set Up Global Load Balancer') {
+            when {
+                allOf {
+                    expression { params.ACTION == 'deploy' }
+                    expression { params.CLOUD_PROVIDER == 'all' }
+                }
+            }
+            steps {
+                script {
+                    echo "Setting up global load balancer and DNS..."
+                    // Use a DNS provider or global load balancer that supports multi-cloud endpoints
+                    // This example assumes using AWS Route 53 as the DNS provider
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        // Collect the endpoints from each provider
+                        def awsEndpoint = sh(
+                            script: "terraform output -state=terraform-AWS/terraform.tfstate load_balancer_dns",
+                            returnStdout: true
+                        ).trim()
+                        def gcpEndpoint = sh(
+                            script: "terraform output -state=terraform-GCP/terraform.tfstate load_balancer_ip",
+                            returnStdout: true
+                        ).trim()
+                        def azureEndpoint = sh(
+                            script: "terraform output -state=terraform-AZURE/terraform.tfstate load_balancer_ip",
+                            returnStdout: true
+                        ).trim()
+
+                        // Update Route 53 DNS records to point to the endpoints
+                        // Replace 'YOUR_HOSTED_ZONE_ID' and 'your-common-domain.com' with your actual values
                         sh """
-                        # Add Azure deployment commands here
+                        aws route53 change-resource-record-sets --hosted-zone-id YOUR_HOSTED_ZONE_ID --change-batch '{
+                            "Comment": "Update record to add multi-cloud endpoints",
+                            "Changes": [
+                                {
+                                    "Action": "UPSERT",
+                                    "ResourceRecordSet": {
+                                        "Name": "your-common-domain.com.",
+                                        "Type": "A",
+                                        "TTL": 60,
+                                        "ResourceRecords": [
+                                            {"Value": "${awsEndpoint}"},
+                                            {"Value": "${gcpEndpoint}"},
+                                            {"Value": "${azureEndpoint}"}
+                                        ]
+                                    }
+                                }
+                            ]
+                        }'
                         """
                     }
                 }
             }
         }
 
+        // Only perform verification if deploying
         stage('Verification') {
+            when {
+                expression { params.ACTION == 'deploy' }
+            }
             steps {
                 script {
-                    // Wait for the service to stabilize
-                    sleep(time: 30, unit: 'SECONDS')
+                    // Wait for DNS propagation
+                    sleep(time: 120, unit: 'SECONDS')
+
+                    echo "Verifying deployment at ${APPLICATION_URL}"
 
                     // Check HTTP status code
                     def http_status = sh(
@@ -253,7 +234,7 @@ pipeline {
                     ).trim()
 
                     if (http_status == '200') {
-                        echo 'HTTP status code is 200.'
+                        echo "Deployment verification succeeded. HTTP status code is 200."
                     } else {
                         error "Deployment verification failed. HTTP status code: ${http_status}"
                     }
