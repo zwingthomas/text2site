@@ -166,7 +166,29 @@ pipeline {
                                         }
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying AWS resources..."
-                                        sh "terraform destroy -auto-approve"
+                                        try {
+                                            def result = sh(
+                                                script: """
+                                                terraform destroy -auto-approve \
+                                                    -var="docker_image_tag=${BUILD_NUMBER}" \
+                                                    -var twilio_auth_token=\$twilio_auth_token \
+                                                    -var aws_region=${env.AWS_REGION} 2>&1
+                                                """,
+                                                returnStatus: true // Captures exit code only
+                                            )
+
+                                            // Log the output and handle errors
+                                            if (result != 0) {
+                                                echo "Terraform destroy failed with exit code ${result}"
+                                                error "Terraform destroy failed"
+                                            } else {
+                                                echo "Terraform destroy succeeded."
+                                            }
+                                        } catch (Exception e) {
+                                            echo "Terraform destroy failed: ${e}"
+                                            currentBuild.result = 'FAILURE'
+                                            throw e
+                                        }
                                     }
                                 }
                             } else if (provider == 'gcp') {
