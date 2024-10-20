@@ -95,13 +95,16 @@ pipeline {
                             }
                         } else if (provider == 'gcp') {
                             echo "Pushing Docker Image to GCP Container Registry..."
-                            withCredentials([file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                            
+                            // Use withCredentials to retrieve both GCP credentials and GCP project ID
+                            withCredentials([file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS'),
+                                            string(credentialsId: 'gcp-project-id', variable: 'GCP_PROJECT_ID')]) {
                                 sh """
-                                gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
-                                gcloud config set project ${env.GCP_PROJECT_ID}
+                                gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+                                gcloud config set project ${GCP_PROJECT_ID}
                                 gcloud auth configure-docker
-                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} gcr.io/${env.GCP_PROJECT_ID}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                                docker push gcr.io/${env.GCP_PROJECT_ID}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} gcr.io/${GCP_PROJECT_ID}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                                docker push gcr.io/${GCP_PROJECT_ID}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
                                 """
                             }
                         } else if (provider == 'azure') {
