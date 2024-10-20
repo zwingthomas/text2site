@@ -140,24 +140,24 @@ pipeline {
                                     if (params.ACTION == 'deploy') {
                                         echo "Applying Terraform configuration for AWS..."
                                         withCredentials([string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token')]) {
-                                             try {
+                                            try {
                                                 def result = sh(
                                                     script: """
                                                     terraform apply -auto-approve \
-                                                        -var="twilio_auth_token=${twilio_auth_token}" \
-                                                        -var="docker_image_tag=${DOCKER_IMAGE_TAG}" \
-                                                        -var="aws_account_id=${AWS_ACCOUNT_ID}" \
-                                                        -var="aws_region=${env.AWS_REGION}"  2>&1 
-                                                    """, // redirect stderr to stdout
-                                                    returnStatus: true, // Captures exit code
-                                                    returnStdout: true  // Captures stdout and stderr
-                                                ).trim()
+                                                        -var twilio_auth_token=\$twilio_auth_token \
+                                                        -var docker_image_tag=${DOCKER_IMAGE_TAG} \
+                                                        -var aws_account_id=\$AWS_ACCOUNT_ID \
+                                                        -var aws_region=${env.AWS_REGION} 2>&1
+                                                    """,
+                                                    returnStatus: true // Captures exit code only
+                                                )
 
-                                                echo result // Log output
-
-                                                // Check the exit status of the terraform command
+                                                // Log the output and handle errors
                                                 if (result != 0) {
-                                                    error "Terraform apply failed with exit code ${result}"
+                                                    echo "Terraform apply failed with exit code ${result}"
+                                                    error "Terraform apply failed"
+                                                } else {
+                                                    echo "Terraform apply succeeded."
                                                 }
                                             } catch (Exception e) {
                                                 echo "Terraform apply failed: ${e}"
