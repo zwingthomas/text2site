@@ -35,6 +35,11 @@ variable "log_retention_in_days" {
   default     = 5
 }
 
+variable "docker_image_tag" {
+  description = "The Docker image tag, typically the Jenkins build number."
+  type        = string
+}
+
 # variable "contact_first_name" {
 #   description = "The contact's first name"
 #   type        = string
