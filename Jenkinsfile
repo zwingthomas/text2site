@@ -3,7 +3,7 @@ pipeline {
 
     parameters {
         choice(name: 'ACTION', choices: ['deploy', 'destroy'], description: 'Select action to perform')
-        choice(name: 'CLOUD_PROVIDER', choices: ['aws', 'gcp', 'azure', 'all'], description: 'Select cloud provider(s)')
+        choice(name: 'CLOUD_PROVIDER', choices: ['gcp', 'aws', 'azure', 'all'], description: 'Select cloud provider(s)')
     }
 
     environment {
