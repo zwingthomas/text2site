@@ -140,13 +140,19 @@ pipeline {
                                     if (params.ACTION == 'deploy') {
                                         echo "Applying Terraform configuration for AWS..."
                                         withCredentials([string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token')]) {
-                                            sh """
-                                            terraform apply -auto-approve \
-                                                -var="twilio_auth_token=${twilio_auth_token}" \
-                                                -var="docker_image_tag=${DOCKER_IMAGE_TAG}" \
-                                                -var="aws_account_id=${AWS_ACCOUNT_ID}" \
-                                                -var="aws_region=${env.AWS_REGION}"
-                                            """
+                                            try {
+                                                sh """
+                                                terraform apply -auto-approve \
+                                                    -var="twilio_auth_token=${twilio_auth_token}" \
+                                                    -var="docker_image_tag=${DOCKER_IMAGE_TAG}" \
+                                                    -var="aws_account_id=${AWS_ACCOUNT_ID}" \
+                                                    -var="aws_region=${env.AWS_REGION}"
+                                                """
+                                            } catch (Exception e) {
+                                                echo "Terraform apply failed: ${e}"
+                                                currentBuild.result = 'FAILURE'
+                                                throw e
+                                            }
                                         }
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying AWS resources..."
