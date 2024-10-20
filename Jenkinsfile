@@ -17,7 +17,7 @@ pipeline {
 
         // AWS-specific environment variables
         AWS_REGION                   = 'us-east-1'                        
-        AWS_ECR_REPO_NAME            = 'hello-world-repo'                 
+        AWS_ECR_REPO_NAME            = 'hello-world-app-repo'                 
         AWS_CREDENTIALS_ID           = 'aws-credentials'                  // Jenkins credentials ID for AWS
         AWS_ACCOUNT_ID_CRED_ID       = 'aws-account-id'                   // Jenkins credentials ID for AWS Account ID
         AWS_HOSTED_ZONE_ID_CRED_ID   = 'aws-hosted-zone-id'               // Jenkins credentials ID for AWS Hosted Zone ID
