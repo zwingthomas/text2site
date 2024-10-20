@@ -8,10 +8,33 @@ pipeline {
 
     environment {
         // Common environment variables
-        DOCKER_IMAGE_NAME   = 'hello-world-app'
-        DOCKER_IMAGE_TAG    = "${env.BUILD_NUMBER}"
-        twilio_auth_token   = credentials('twilio-auth-token')
-        APPLICATION_URL     = 'https://your-common-domain.com' // Replace with your actual domain
+        DOCKER_IMAGE_NAME            = 'hello-world-app'                  // Public
+        DOCKER_IMAGE_TAG             = "${env.BUILD_NUMBER}"              // Dynamic
+        APPLICATION_URL              = 'https://helloWorldApp.com'        // Public, replace with your actual domain
+
+        // Credentials IDs (these are not the secrets themselves)
+        TWILIO_AUTH_TOKEN_CRED_ID    = 'twilio-auth-token'                // Jenkins credentials ID for Twilio Auth Token
+
+        // AWS-specific environment variables
+        AWS_REGION                   = 'us-east-1'                        // Public
+        AWS_ECR_REPO_NAME            = 'hello-world-repo'                 // Public
+        AWS_CREDENTIALS_ID           = 'aws-credentials'                  // Jenkins credentials ID for AWS
+        AWS_ACCOUNT_ID_CRED_ID       = 'aws-account-id'                   // Jenkins credentials ID for AWS Account ID
+        AWS_HOSTED_ZONE_ID_CRED_ID   = 'aws-hosted-zone-id'               // Jenkins credentials ID for AWS Hosted Zone ID
+        AWS_DOMAIN_NAME              = 'your-common-domain.com'           // Public, replace with your domain name
+
+        // GCP-specific environment variables
+        GCP_PROJECT_ID               = 'your-gcp-project-id'              // Public, replace with your GCP Project ID
+        GCP_CREDENTIALS_ID           = 'gcp-credentials-file'             // Jenkins credentials ID for GCP
+
+        // Azure-specific environment variables
+        AZURE_REGISTRY_NAME          = 'yourregistry.azurecr.io'          // Public, replace with your Azure Container Registry name
+        AZURE_ACR_CREDENTIALS_ID     = 'azure-acr-credentials'            // Jenkins credentials ID for Azure ACR
+        // Azure credentials IDs for Terraform
+        AZURE_CLIENT_ID_CRED_ID         = 'azure-client-id'               // Jenkins credentials ID for Azure Client ID
+        AZURE_CLIENT_SECRET_CRED_ID     = 'azure-client-secret'           // Jenkins credentials ID for Azure Client Secret
+        AZURE_SUBSCRIPTION_ID_CRED_ID   = 'azure-subscription-id'         // Jenkins credentials ID for Azure Subscription ID
+        AZURE_TENANT_ID_CRED_ID         = 'azure-tenant-id'               // Jenkins credentials ID for Azure Tenant ID
     }
 
     stages {
@@ -59,30 +82,34 @@ pipeline {
                     for (provider in providers) {
                         if (provider == 'aws') {
                             echo "Pushing Docker Image to AWS ECR..."
-                            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                            withCredentials([
+                                [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: env.AWS_CREDENTIALS_ID],
+                                string(credentialsId: env.AWS_ACCOUNT_ID_CRED_ID, variable: 'AWS_ACCOUNT_ID')
+                            ]) {
                                 sh """
-                                aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 354923279633.dkr.ecr.us-east-1.amazonaws.com
-                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} 354923279633.dkr.ecr.us-east-1.amazonaws.com/hello-world-repo:${DOCKER_IMAGE_TAG}
-                                docker push 354923279633.dkr.ecr.us-east-1.amazonaws.com/hello-world-repo:${DOCKER_IMAGE_TAG}
+                                aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com
+                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/${env.AWS_ECR_REPO_NAME}:${DOCKER_IMAGE_TAG}
+                                docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/${env.AWS_ECR_REPO_NAME}:${DOCKER_IMAGE_TAG}
                                 """
                             }
                         } else if (provider == 'gcp') {
                             echo "Pushing Docker Image to GCP Container Registry..."
-                            withCredentials([file(credentialsId: 'gcp-credentials-file', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                            withCredentials([file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                                 sh """
                                 gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
+                                gcloud config set project ${env.GCP_PROJECT_ID}
                                 gcloud auth configure-docker
-                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} gcr.io/your-project-id/hello-world-repo:${DOCKER_IMAGE_TAG}
-                                docker push gcr.io/your-project-id/hello-world-repo:${DOCKER_IMAGE_TAG}
+                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} gcr.io/${env.GCP_PROJECT_ID}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                                docker push gcr.io/${env.GCP_PROJECT_ID}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
                                 """
                             }
                         } else if (provider == 'azure') {
                             echo "Pushing Docker Image to Azure Container Registry..."
-                            withCredentials([usernamePassword(credentialsId: 'azure-acr-credentials', usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD')]) {
+                            withCredentials([usernamePassword(credentialsId: env.AZURE_ACR_CREDENTIALS_ID, usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD')]) {
                                 sh """
-                                docker login yourregistry.azurecr.io -u $ACR_USERNAME -p $ACR_PASSWORD
-                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} yourregistry.azurecr.io/hello-world-repo:${DOCKER_IMAGE_TAG}
-                                docker push yourregistry.azurecr.io/hello-world-repo:${DOCKER_IMAGE_TAG}
+                                docker login ${env.AZURE_REGISTRY_NAME} -u $ACR_USERNAME -p $ACR_PASSWORD
+                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                                docker push ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
                                 """
                             }
                         }
@@ -104,29 +131,40 @@ pipeline {
                     for (provider in providers) {
                         dir("terraform-${provider.toUpperCase()}") {
                             if (provider == 'aws') {
-                                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                                withCredentials([
+                                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: env.AWS_CREDENTIALS_ID],
+                                    string(credentialsId: env.AWS_ACCOUNT_ID_CRED_ID, variable: 'AWS_ACCOUNT_ID')
+                                ]) {
                                     sh "terraform init"
                                     if (params.ACTION == 'deploy') {
                                         echo "Applying Terraform configuration for AWS..."
-                                        sh """
-                                        terraform apply -auto-approve \
-                                            -var="twilio_auth_token=${twilio_auth_token}" \
-                                            -var="docker_image_tag=${DOCKER_IMAGE_TAG}"
-                                        """
+                                        withCredentials([string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token')]) {
+                                            sh """
+                                            terraform apply -auto-approve \
+                                                -var="twilio_auth_token=${twilio_auth_token}" \
+                                                -var="docker_image_tag=${DOCKER_IMAGE_TAG}" \
+                                                -var="aws_account_id=${AWS_ACCOUNT_ID}" \
+                                                -var="aws_region=${env.AWS_REGION}"
+                                            """
+                                        }
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying AWS resources..."
                                         sh "terraform destroy -auto-approve"
                                     }
                                 }
                             } else if (provider == 'gcp') {
-                                withCredentials([file(credentialsId: 'gcp-credentials-file', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                                withCredentials([
+                                    file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS'),
+                                    string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token')
+                                ]) {
                                     sh "terraform init"
                                     if (params.ACTION == 'deploy') {
                                         echo "Applying Terraform configuration for GCP..."
                                         sh """
                                         terraform apply -auto-approve \
                                             -var="twilio_auth_token=${twilio_auth_token}" \
-                                            -var="docker_image_tag=${DOCKER_IMAGE_TAG}"
+                                            -var="docker_image_tag=${DOCKER_IMAGE_TAG}" \
+                                            -var="gcp_project_id=${env.GCP_PROJECT_ID}"
                                         """
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying GCP resources..."
@@ -135,10 +173,11 @@ pipeline {
                                 }
                             } else if (provider == 'azure') {
                                 withCredentials([
-                                    string(credentialsId: 'azure-client-id', variable: 'ARM_CLIENT_ID'),
-                                    string(credentialsId: 'azure-client-secret', variable: 'ARM_CLIENT_SECRET'),
-                                    string(credentialsId: 'azure-subscription-id', variable: 'ARM_SUBSCRIPTION_ID'),
-                                    string(credentialsId: 'azure-tenant-id', variable: 'ARM_TENANT_ID')
+                                    string(credentialsId: env.AZURE_CLIENT_ID_CRED_ID, variable: 'ARM_CLIENT_ID'),
+                                    string(credentialsId: env.AZURE_CLIENT_SECRET_CRED_ID, variable: 'ARM_CLIENT_SECRET'),
+                                    string(credentialsId: env.AZURE_SUBSCRIPTION_ID_CRED_ID, variable: 'ARM_SUBSCRIPTION_ID'),
+                                    string(credentialsId: env.AZURE_TENANT_ID_CRED_ID, variable: 'ARM_TENANT_ID'),
+                                    string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token')
                                 ]) {
                                     sh "terraform init"
                                     if (params.ACTION == 'deploy') {
@@ -173,31 +212,49 @@ pipeline {
                     echo "Setting up global load balancer and DNS..."
                     // Use a DNS provider or global load balancer that supports multi-cloud endpoints
                     // This example assumes using AWS Route 53 as the DNS provider
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                    withCredentials([
+                        [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: env.AWS_CREDENTIALS_ID],
+                        string(credentialsId: env.AWS_HOSTED_ZONE_ID_CRED_ID, variable: 'AWS_HOSTED_ZONE_ID'),
+                        string(credentialsId: env.AWS_ACCOUNT_ID_CRED_ID, variable: 'AWS_ACCOUNT_ID')
+                    ]) {
                         // Collect the endpoints from each provider
-                        def awsEndpoint = sh(
-                            script: "terraform output -state=terraform-AWS/terraform.tfstate load_balancer_dns",
-                            returnStdout: true
-                        ).trim()
-                        def gcpEndpoint = sh(
-                            script: "terraform output -state=terraform-GCP/terraform.tfstate load_balancer_ip",
-                            returnStdout: true
-                        ).trim()
-                        def azureEndpoint = sh(
-                            script: "terraform output -state=terraform-AZURE/terraform.tfstate load_balancer_ip",
-                            returnStdout: true
-                        ).trim()
+
+                        // AWS Endpoint
+                        def awsEndpoint = ''
+                        dir('terraform-AWS') {
+                            awsEndpoint = sh(
+                                script: "terraform output load_balancer_dns",
+                                returnStdout: true
+                            ).trim()
+                        }
+
+                        // GCP Endpoint
+                        def gcpEndpoint = ''
+                        dir('terraform-GCP') {
+                            gcpEndpoint = sh(
+                                script: "terraform output load_balancer_ip",
+                                returnStdout: true
+                            ).trim()
+                        }
+
+                        // Azure Endpoint
+                        def azureEndpoint = ''
+                        dir('terraform-AZURE') {
+                            azureEndpoint = sh(
+                                script: "terraform output load_balancer_ip",
+                                returnStdout: true
+                            ).trim()
+                        }
 
                         // Update Route 53 DNS records to point to the endpoints
-                        // Replace 'YOUR_HOSTED_ZONE_ID' and 'your-common-domain.com' with your actual values
                         sh """
-                        aws route53 change-resource-record-sets --hosted-zone-id YOUR_HOSTED_ZONE_ID --change-batch '{
+                        aws route53 change-resource-record-sets --hosted-zone-id ${AWS_HOSTED_ZONE_ID} --change-batch '{
                             "Comment": "Update record to add multi-cloud endpoints",
                             "Changes": [
                                 {
                                     "Action": "UPSERT",
                                     "ResourceRecordSet": {
-                                        "Name": "your-common-domain.com.",
+                                        "Name": "${AWS_DOMAIN_NAME}.",
                                         "Type": "A",
                                         "TTL": 60,
                                         "ResourceRecords": [
