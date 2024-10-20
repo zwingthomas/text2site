@@ -291,7 +291,10 @@ pipeline {
         // Only perform verification if deploying
         stage('Verification') {
             when {
-                expression { params.ACTION == 'deploy' }
+                allOf {
+                    expression { params.ACTION == 'deploy' }
+                    expression { params.CLOUD_PROVIDER == 'all' }
+                }
             }
             steps {
                 script {
