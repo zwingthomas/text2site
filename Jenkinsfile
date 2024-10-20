@@ -21,7 +21,7 @@ pipeline {
         AWS_CREDENTIALS_ID           = 'aws-credentials'                  // Jenkins credentials ID for AWS
         AWS_ACCOUNT_ID_CRED_ID       = 'aws-account-id'                   // Jenkins credentials ID for AWS Account ID
         AWS_HOSTED_ZONE_ID_CRED_ID   = 'aws-hosted-zone-id'               // Jenkins credentials ID for AWS Hosted Zone ID
-        AWS_DOMAIN_NAME              =  APPLICATION_URL
+        AWS_DOMAIN_NAME              =  "${APPLICATION_URL}"
 
         // GCP-specific environment variables
         GCP_PROJECT_ID               = 'gcp-project'                      // Jenkins credentials ID for GCP Project
