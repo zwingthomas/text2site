@@ -98,7 +98,7 @@ pipeline {
                             
                             // Use withCredentials to retrieve both GCP credentials and GCP project ID
                             withCredentials([file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS'),
-                                            string(credentialsId: 'gcp-project-id', variable: 'GCP_PROJECT_ID')]) {
+                                            string(credentialsId: 'gcp-project', variable: 'GCP_PROJECT_ID')]) {
                                 sh """
                                 gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
                                 gcloud config set project ${GCP_PROJECT_ID}
