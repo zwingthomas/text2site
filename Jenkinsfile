@@ -144,6 +144,7 @@ pipeline {
                                                 def result = sh(
                                                     script: """
                                                     terraform apply -auto-approve \
+                                                        -var="docker_image_tag=${BUILD_NUMBER}" \
                                                         -var twilio_auth_token=\$twilio_auth_token \
                                                         -var aws_region=${env.AWS_REGION} 2>&1
                                                     """,
