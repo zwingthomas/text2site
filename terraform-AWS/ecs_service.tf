@@ -1,6 +1,15 @@
 # Force role generation
 resource "aws_iam_service_linked_role" "ecs" {
   aws_service_name = "ecs.amazonaws.com"
+
+  # Ensure this role is only deleted after the ECS cluster is destroyed
+  depends_on = [
+    aws_ecs_cluster.cluster,           # Wait for the ECS cluster to be destroyed
+    aws_ecs_service.service,           # Wait for the ECS service to be destroyed
+    aws_ecs_task_definition.task,      # Ensure tasks are destroyed
+    aws_lb_target_group.app_tg,        # Ensure target groups are destroyed
+    aws_security_group.ecs_sg          # Ensure security groups are destroyed
+  ]
 }
 
 # Create elastic container service
@@ -23,7 +32,11 @@ resource "aws_ecs_service" "service" {
     container_port   = 5000
   }
 
-  depends_on = [aws_lb_listener.http]
+  depends_on = [
+    aws_ecs_task_definition.task,
+    aws_lb_target_group.app_tg,      
+    aws_lb_listener.http
+  ]
 
   tags = {
     Name = "${var.project_name}-ecs-service"
