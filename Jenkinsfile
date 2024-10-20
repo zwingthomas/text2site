@@ -8,28 +8,29 @@ pipeline {
 
     environment {
         // Common environment variables
-        DOCKER_IMAGE_NAME            = 'hello-world-app'                  // Public
-        DOCKER_IMAGE_TAG             = "${env.BUILD_NUMBER}"              // Dynamic
-        APPLICATION_URL              = 'https://helloWorldApp.com'        // Public, replace with your actual domain
+        DOCKER_IMAGE_NAME            = 'hello-world-app'
+        DOCKER_IMAGE_TAG             = "${env.BUILD_NUMBER}"
+        APPLICATION_URL              = 'https://text18449410220anything-zwinger.org'
 
         // Credentials IDs (these are not the secrets themselves)
         TWILIO_AUTH_TOKEN_CRED_ID    = 'twilio-auth-token'                // Jenkins credentials ID for Twilio Auth Token
 
         // AWS-specific environment variables
-        AWS_REGION                   = 'us-east-1'                        // Public
-        AWS_ECR_REPO_NAME            = 'hello-world-repo'                 // Public
+        AWS_REGION                   = 'us-east-1'                        
+        AWS_ECR_REPO_NAME            = 'hello-world-repo'                 
         AWS_CREDENTIALS_ID           = 'aws-credentials'                  // Jenkins credentials ID for AWS
         AWS_ACCOUNT_ID_CRED_ID       = 'aws-account-id'                   // Jenkins credentials ID for AWS Account ID
         AWS_HOSTED_ZONE_ID_CRED_ID   = 'aws-hosted-zone-id'               // Jenkins credentials ID for AWS Hosted Zone ID
-        AWS_DOMAIN_NAME              = 'your-common-domain.com'           // Public, replace with your domain name
+        AWS_DOMAIN_NAME              =  APPLICATION_URL
 
         // GCP-specific environment variables
-        GCP_PROJECT_ID               = 'your-gcp-project-id'              // Public, replace with your GCP Project ID
-        GCP_CREDENTIALS_ID           = 'gcp-credentials-file'             // Jenkins credentials ID for GCP
+        GCP_PROJECT_ID               = 'gcp-project'                      // Jenkins credentials ID for GCP Project
+        GCP_CREDENTIALS_ID           = 'gcp-credentials-file'             // Jenkins credentials ID for GCP Service Account Key
 
         // Azure-specific environment variables
-        AZURE_REGISTRY_NAME          = 'yourregistry.azurecr.io'          // Public, replace with your Azure Container Registry name
+        AZURE_REGISTRY_NAME          = 'yourregistry.azurecr.io'
         AZURE_ACR_CREDENTIALS_ID     = 'azure-acr-credentials'            // Jenkins credentials ID for Azure ACR
+       
         // Azure credentials IDs for Terraform
         AZURE_CLIENT_ID_CRED_ID         = 'azure-client-id'               // Jenkins credentials ID for Azure Client ID
         AZURE_CLIENT_SECRET_CRED_ID     = 'azure-client-secret'           // Jenkins credentials ID for Azure Client Secret
