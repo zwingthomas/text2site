@@ -145,8 +145,6 @@ pipeline {
                                                     script: """
                                                     terraform apply -auto-approve \
                                                         -var twilio_auth_token=\$twilio_auth_token \
-                                                        -var docker_image_tag=${DOCKER_IMAGE_TAG} \
-                                                        -var aws_account_id=\$AWS_ACCOUNT_ID \
                                                         -var aws_region=${env.AWS_REGION} 2>&1
                                                     """,
                                                     returnStatus: true // Captures exit code only
