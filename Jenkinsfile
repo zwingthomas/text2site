@@ -103,8 +103,8 @@ pipeline {
                                 gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
                                 gcloud config set project ${GCP_PROJECT_ID}
                                 gcloud auth configure-docker
-                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/hello-world-app/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                                docker push us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/hello-world-app/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                                docker push us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
                                 """
                             }
                         } else if (provider == 'azure') {
