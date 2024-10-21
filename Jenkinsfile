@@ -103,7 +103,7 @@ pipeline {
                                 gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
                                 gcloud config set project ${GCP_PROJECT_ID}
                                 gcloud auth configure-docker
-                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} gcr.io/${GCP_PROJECT_ID}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} gcr.io/us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
                                 docker push gcr.io/us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
                                 """
                             }
