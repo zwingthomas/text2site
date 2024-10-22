@@ -7,6 +7,11 @@ terraform {
       version = "= 6.7.0"
     }
   }
+  
+  backend "gcs" {
+    bucket  = " tfstate-bobdabobman"
+    prefix  = "terraform/state"
+  }
 }
 
 
