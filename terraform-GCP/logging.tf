@@ -11,6 +11,10 @@ resource "google_storage_bucket" "logs_bucket" {
       age = 90  # Retain logs for 90 days
     }
   }
+  
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Log Sink to export logs to the storage bucket
