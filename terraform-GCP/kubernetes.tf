@@ -37,7 +37,7 @@ resource "kubernetes_deployment" "app_deployment" {
       spec {
         container {
           name  = "app"
-          image = var.docker_image
+          image = var.docker_image_tag
 
           port {
             container_port = var.application_port
