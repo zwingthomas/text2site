@@ -9,7 +9,7 @@ terraform {
   }
   
   backend "gcs" {
-    bucket  = " tfstate-bobdabobman"
+    bucket  = "tfstate-zwinger"
     prefix  = "terraform/state"
   }
 }
