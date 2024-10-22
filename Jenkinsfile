@@ -197,7 +197,8 @@ pipeline {
                             } else if (provider == 'gcp') {
                                 withCredentials([
                                     file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS'),
-                                    string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token')
+                                    string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token'),
+                                    string(credentialsId: 'gcp-project', variable: 'GCP_PROJECT_ID')
                                 ]) {
                                     sh "terraform init"
                                     if (params.ACTION == 'deploy') {
