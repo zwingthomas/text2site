@@ -206,7 +206,8 @@ pipeline {
                                         terraform apply -auto-approve \
                                             -var="twilio_auth_token=${twilio_auth_token}" \
                                             -var="docker_image_tag=${DOCKER_IMAGE_TAG}" \
-                                            -var="project_id=${env.GCP_PROJECT_ID}"
+                                            -var="project_id=${env.GCP_PROJECT_ID}" \
+                                            -var="credentials_file=${GOOGLE_APPLICATION_CREDENTIALS}"
                                         """
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying GCP resources..."
