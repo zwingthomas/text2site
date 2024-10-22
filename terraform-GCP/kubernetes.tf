@@ -19,7 +19,7 @@ resource "kubernetes_deployment" "app_deployment" {
   }
 
   spec {
-    replicas = 3
+    replicas = 1
 
     selector {
       match_labels = {
@@ -131,8 +131,8 @@ resource "kubernetes_horizontal_pod_autoscaler" "app_hpa" {
   }
 
   spec {
-    max_replicas = 5
-    min_replicas = 3
+    max_replicas = 2
+    min_replicas = 1
 
     scale_target_ref {
       kind = "Deployment"
