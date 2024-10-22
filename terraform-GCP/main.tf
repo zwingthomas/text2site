@@ -6,6 +6,7 @@ resource "google_service_account" "cluster_service_account" {
 
 resource "google_project_iam_member" "cluster_service_account_roles" {
   for_each = toset([
+    "roles/container.admin",
     "roles/monitoring.metricWriter",
     "roles/logging.logWriter",
     "roles/stackdriver.resourceMetadata.writer",
