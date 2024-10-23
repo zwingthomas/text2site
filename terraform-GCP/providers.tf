@@ -31,7 +31,7 @@ resource "null_resource" "wait_for_cluster" {
 
 # Kubernetes provider using the GKE cluster data
 provider "kubernetes" {
-  host                   = "http://${google_container_cluster.primary.endpoint}"
+  host                   = "https://${google_container_cluster.primary.endpoint}"
   cluster_ca_certificate = base64decode(google_container_cluster.primary.master_auth[0].cluster_ca_certificate)
   token                  = data.google_client_config.default.access_token
 }
