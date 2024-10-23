@@ -210,6 +210,7 @@ pipeline {
                                             -var="project_id=${env.GCP_PROJECT_ID}" \
                                             -var="credentials_file=${GOOGLE_APPLICATION_CREDENTIALS}"
                                         """
+                                        sh "terraform output"
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying GCP resources..."
                                         sh "terraform destroy -auto-approve"
