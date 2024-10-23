@@ -10,6 +10,7 @@ resource "google_project_iam_member" "cluster_service_account_roles" {
     "roles/monitoring.metricWriter",
     "roles/logging.logWriter",
     "roles/stackdriver.resourceMetadata.writer",
+    "roles/storage.objectViewer",
   ])
 
   project = var.project_id
