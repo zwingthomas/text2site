@@ -23,8 +23,8 @@ output "cluster_ca_certificate" {
 
 output "application_external_ip" {
   value = (
-    length(kubernetes_service.app_service.status.load_balancer[0].ingress) > 0 
-    ? kubernetes_service.app_service.status.load_balancer[0].ingress[0].ip 
+    length(kubernetes_service.app_service.status[0].load_balancer[0].ingress) > 0 
+    ? kubernetes_service.app_service.status[0].load_balancer[0].ingress[0].ip 
     : "No IP available"
   )
 }
