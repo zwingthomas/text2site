@@ -1,5 +1,5 @@
 # Check if it exists
-data "aws_iam_service_linked_role" "ecs" {
+data "aws_iam_role" "ecs_service_linked_role" {
   name = "AWSServiceRoleForECS"
 }
 
@@ -8,7 +8,7 @@ resource "aws_iam_service_linked_role" "ecs" {
   aws_service_name = "ecs.amazonaws.com"
 
   # Only create if it does not exist
-  count = length(data.aws_iam_service_linked_role.ecs.arn) == 0 ? 1 : 0
+  count = try(length(data.aws_iam_role.ecs_service_linked_role.arn), 0) == 0 ? 1 : 0
 
   # Ensure this role is only deleted after the ECS cluster is destroyed
   depends_on = [
