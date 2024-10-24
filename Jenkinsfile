@@ -28,7 +28,7 @@ pipeline {
         GCP_CREDENTIALS_ID           = 'gcp-credentials-file'             // Jenkins credentials ID for GCP Service Account Key
 
         // Azure-specific environment variables
-        AZURE_REGISTRY_NAME          = 'yourregistry.azurecr.io'
+        AZURE_REGISTRY_NAME          = 'helloworldappregistry.azurecr.io'
         AZURE_ACR_CREDENTIALS_ID     = 'azure-acr-credentials'            // Jenkins credentials ID for Azure ACR
        
         // Azure credentials IDs for Terraform
