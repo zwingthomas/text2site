@@ -149,7 +149,8 @@ pipeline {
                                                     terraform apply -auto-approve \
                                                         -var="docker_image_tag=${BUILD_NUMBER}" \
                                                         -var twilio_auth_token=\$twilio_auth_token \
-                                                        -var aws_region=${env.AWS_REGION} 2>&1
+                                                        -var aws_region=${env.AWS_REGION} \
+                                                        -var create_ecr_repo=false 2>&1
                                                     """,
                                                     returnStatus: true // Captures exit code only
                                                 )
@@ -175,7 +176,8 @@ pipeline {
                                                 terraform destroy -auto-approve \
                                                     -var="docker_image_tag=${BUILD_NUMBER}" \
                                                     -var twilio_auth_token=\$twilio_auth_token \
-                                                    -var aws_region=${env.AWS_REGION} 2>&1
+                                                    -var aws_region=${env.AWS_REGION} \
+                                                    -var create_ecr_repo=false 2>&1
                                                 """,
                                                 returnStatus: true // Captures exit code only
                                             )

@@ -40,6 +40,12 @@ variable "docker_image_tag" {
   type        = string
 }
 
+variable "create_ecr_repo" {
+  type    = bool
+  default = true  # Set to false if you want to use an existing repository
+}
+
+
 # variable "contact_first_name" {
 #   description = "The contact's first name"
 #   type        = string

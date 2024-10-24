@@ -1,8 +1,10 @@
-# Check if the repository already exists
+# Data source to reference an existing repository
 data "aws_ecr_repository" "existing_repo" {
-  name = "hello-world-app-repo"
+  count = var.create_ecr_repo ? 0 : 1
+  name  = "hello-world-app-repo"
 }
 
+# Create new repo if one does not exist
 resource "aws_ecr_repository" "repo" {
 
   # Only build if the data block was unable to fetch an existing repo
