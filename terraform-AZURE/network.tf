@@ -27,6 +27,14 @@ resource "azurerm_route_table" "aks_route_table" {
   resource_group_name            = azurerm_resource_group.aks_rg.name
 }
 
+resource "azurerm_route" "default_route" {
+  name                   = "default-route"
+  resource_group_name     = azurerm_resource_group.aks_rg.name
+  route_table_name        = azurerm_route_table.aks_route_table.name
+  address_prefix          = "0.0.0.0/0"
+  next_hop_type           = "Internet"
+}
+
 resource "azurerm_subnet_route_table_association" "aks_subnet_route_table" {
   subnet_id      = azurerm_subnet.aks_subnet.id
   route_table_id = azurerm_route_table.aks_route_table.id
