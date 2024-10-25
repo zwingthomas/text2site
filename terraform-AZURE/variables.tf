@@ -39,13 +39,13 @@ variable "aks_cluster_name" {
 variable "node_count" {
   description = "Number of nodes in the node pool"
   type        = number
-  default     = 3
+  default     = 1
 }
 
 variable "node_vm_size" {
   description = "VM size for the nodes"
   type        = string
-  default     = "Standard_DS2_v2"
+  default     = "StaStandard_B1ms"
 }
 
 variable "docker_image" {
