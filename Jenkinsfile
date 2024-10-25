@@ -233,7 +233,7 @@ pipeline {
                                     string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token')
                                 ]) {
                                     sh "terraform init"
-                                    sh "terraform import azurerm_kubernetes_cluster.aks_cluster \"/subscriptions/${ARM_SUBSCRIPTION_ID}/resourceGroups/hello-world-app-rg/providers/Microsoft.ContainerService/managedClusters/hello-world-aks-cluster""
+                                    sh "terraform import azurerm_kubernetes_cluster.aks_cluster \"/subscriptions/${ARM_SUBSCRIPTION_ID}/resourceGroups/hello-world-app-rg/providers/Microsoft.ContainerService/managedClusters/hello-world-aks-cluster\""
                                     if (params.ACTION == 'deploy') {
                                         echo "Applying Terraform configuration for Azure..."
                                         sh """
