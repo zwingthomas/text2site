@@ -31,45 +31,6 @@ resource "azurerm_key_vault_secret" "twilio_auth_token" {
   depends_on   = [azurerm_role_assignment.aks_key_vault_access]
 }
 
-# AKS Cluster
-resource "azurerm_kubernetes_cluster" "aks_cluster" {
-  name                = var.aks_cluster_name
-  location            = azurerm_resource_group.aks_rg.location
-  resource_group_name = azurerm_resource_group.aks_rg.name
-  dns_prefix          = "${var.aks_cluster_name}-dns"
-
-  kubernetes_version = var.aks_version
-
-  default_node_pool {
-    name           = "default"
-    vm_size        = var.node_vm_size
-    node_count     = var.node_count
-    vnet_subnet_id = azurerm_subnet.aks_subnet.id
-  }
-
-  identity {
-    type = "SystemAssigned"
-  }
-
-  network_profile {
-    network_plugin     = "azure"
-    network_policy     = "azure"
-    dns_service_ip     = "10.2.0.10"
-    service_cidr       = "10.2.0.0/24"
-    # docker_bridge_cidr = "172.17.0.1/16"
-    outbound_type      = "userDefinedRouting"
-  }
-
-  api_server_access_profile {
-    authorized_ip_ranges = var.trusted_ip_ranges
-  }
-
-
-  tags = {
-    Environment = "Production"
-  }
-}
-
 # Grant AKS access to Key Vault
 resource "azurerm_role_assignment" "aks_key_vault_access" {
   scope                = azurerm_key_vault.key_vault.id
