@@ -51,7 +51,7 @@ variable "node_vm_size" {
 variable "docker_image" {
   description = "Docker image to deploy"
   type        = string
-  default     = "helloworldappregistry.azurecr.io/hello-world-repo:62"
+  default     = "helloworldappregistry.azurecr.io/hello-world-repo:64"
 }
 
 variable "twilio_auth_token" {
