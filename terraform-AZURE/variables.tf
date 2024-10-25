@@ -67,7 +67,7 @@ variable "application_port" {
 variable "trusted_ip_ranges" {
   description = "Trusted IP ranges for API server access"
   type        = list(string)
-  default     = ["YOUR_TRUSTED_IP_RANGE"]  # Replace with your IP range
+  default     = ["0.0.0.0/0"]
 }
 
 variable "enable_log_analytics" {
