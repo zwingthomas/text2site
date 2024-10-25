@@ -45,7 +45,7 @@ variable "node_count" {
 variable "node_vm_size" {
   description = "VM size for the nodes"
   type        = string
-  default     = "Standard_B1s"
+  default     = "Standard_D4s_v3"
 }
 
 variable "docker_image" {
