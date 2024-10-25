@@ -69,9 +69,24 @@ resource "azurerm_kubernetes_cluster" "aks_cluster" {
   }
 }
 
-resource "oms_agent" "oms_agent" {
-    enabled                    = var.enable_log_analytics
-    log_analytics_workspace_id = azurerm_log_analytics_workspace.log_analytics.id
+resource "azurerm_log_analytics_workspace" "log_analytics" {
+  name                = "example-workspace"
+  location            = azurerm_resource_group.aks_rg.location
+  resource_group_name = azurerm_resource_group.aks_rg.name
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+}
+
+resource "azurerm_log_analytics_solution" "log_analytics_solution" {
+  solution_name         = "ContainerInsights"
+  location              = azurerm_resource_group.aks_rg.location
+  resource_group_name   = azurerm_resource_group.aks_rg.name
+  workspace_resource_id = azurerm_log_analytics_workspace.log_analytics.id
+  workspace_name        = azurerm_log_analytics_workspace.log_analytics.name
+  plan {
+    publisher = "Microsoft"
+    product   = "OMSGallery/ContainerInsights"
+  }
 }
 
 # Grant AKS access to Key Vault
