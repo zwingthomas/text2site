@@ -45,7 +45,7 @@ variable "node_count" {
 variable "node_vm_size" {
   description = "VM size for the nodes"
   type        = string
-  default     = "Standard_B2pls_v2"
+  default     = "Standard_D2ps_v6"
 }
 
 variable "docker_image" {
