@@ -1,15 +1,13 @@
-# VPC Network
 resource "google_compute_network" "vpc_network" {
   name                    = var.network_name
   auto_create_subnetworks = false
 }
 
-# Subnetwork with secondary IP ranges for pods and services
 resource "google_compute_subnetwork" "subnet" {
-  name                    = "${var.network_name}-subnet"
-  ip_cidr_range           = var.subnet_cidr
-  region                  = var.region
-  network                 = google_compute_network.vpc_network.id
+  name          = "${var.network_name}-subnet"
+  ip_cidr_range = var.subnet_cidr
+  region        = var.region
+  network       = google_compute_network.vpc_network.id
   private_ip_google_access = true
 
   secondary_ip_range {
@@ -23,7 +21,6 @@ resource "google_compute_subnetwork" "subnet" {
   }
 }
 
-# Allow internal communication within the subnet
 resource "google_compute_firewall" "allow_internal" {
   name    = "${var.network_name}-allow-internal"
   network = google_compute_network.vpc_network.name
@@ -45,7 +42,6 @@ resource "google_compute_firewall" "allow_internal" {
   source_ranges = [var.subnet_cidr]
 }
 
-# Allow SSH from a trusted range
 resource "google_compute_firewall" "allow_ssh" {
   name    = "${var.network_name}-allow-ssh"
   network = google_compute_network.vpc_network.name
@@ -56,19 +52,6 @@ resource "google_compute_firewall" "allow_ssh" {
   }
 
   source_ranges = [var.TRUSTED_IP_RANGE]
-}
-
-# Allow outbound egress traffic (443, 53 for DNS, and other ports as needed)
-resource "google_compute_firewall" "allow_egress" {
-  name    = "${var.network_name}-allow-egress"
-  network = google_compute_network.vpc_network.name
-
-  allow {
-    protocol = "tcp"
-    ports    = ["443", "53", "80"]  # HTTPS, DNS, HTTP
-  }
-
-  destination_ranges = ["0.0.0.0/0"]
 }
 
 # Cloud NAT configuration for outbound internet access
@@ -84,19 +67,4 @@ resource "google_compute_router_nat" "nat_config" {
   region                             = var.region
   nat_ip_allocate_option             = "AUTO_ONLY"
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
-}
-
-# Add Azure DNS IP as upstream DNS server if needed (168.63.129.16 for private clusters)
-resource "google_compute_dns_policy" "azure_dns_policy" {
-  name = "${var.network_name}-dns-policy"
-
-  alternative_name_server_config {
-    target_name_servers {
-      ipv4_address = "168.63.129.16"
-    }
-  }
-
-  enable_inbound_forwarding = true
-  enable_logging            = false
-  description               = "DNS policy to allow resolution of Azure internal resources."
 }
