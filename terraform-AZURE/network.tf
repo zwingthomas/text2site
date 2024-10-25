@@ -21,6 +21,17 @@ resource "azurerm_subnet" "aks_subnet" {
   service_endpoints    = ["Microsoft.Storage"]
 }
 
+resource "azurerm_route_table" "aks_route_table" {
+  name                          = "aks-route-table"
+  location                      = azurerm_resource_group.aks_rg.location
+  resource_group_name            = azurerm_resource_group.aks_rg.name
+}
+
+resource "azurerm_subnet_route_table_association" "aks_subnet_route_table" {
+  subnet_id      = azurerm_subnet.aks_subnet.id
+  route_table_id = azurerm_route_table.aks_route_table.id
+}
+
 # Network Security Group
 resource "azurerm_network_security_group" "aks_nsg" {
   name                = "aks-nsg"

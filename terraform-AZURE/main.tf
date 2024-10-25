@@ -28,6 +28,7 @@ resource "azurerm_key_vault_secret" "twilio_auth_token" {
   name         = "twilio-auth-token"
   value        = var.twilio_auth_token
   key_vault_id = azurerm_key_vault.key_vault.id
+  depends_on   = [azurerm_role_assignment.aks_key_vault_access]
 }
 
 # AKS Cluster
