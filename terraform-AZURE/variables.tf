@@ -91,5 +91,5 @@ variable "key_vault_resource_group" {
 variable "aks_version" {
   description = "AKS Kubernetes version"
   type        = string
-  default     = ""  # Leave empty to use the default version
+  default = "1.21.2"
 }
