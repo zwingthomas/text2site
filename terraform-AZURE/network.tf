@@ -32,7 +32,7 @@ resource "azurerm_route" "default_route" {
   resource_group_name     = azurerm_resource_group.aks_rg.name
   route_table_name        = azurerm_route_table.aks_route_table.name
   address_prefix          = "0.0.0.0/0"
-  next_hop_type           = "VirtualAppliance"
+  next_hop_type           = "VirtualNetworkGateway"
 }
 
 resource "azurerm_subnet_route_table_association" "aks_subnet_route_table" {
