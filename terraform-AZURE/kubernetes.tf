@@ -1,102 +1,196 @@
-# Resource Group
-resource "azurerm_resource_group" "aks_rg" {
-  name     = var.resource_group_name
-  location = var.location
+provider "kubernetes" {
+  host                   = azurerm_kubernetes_cluster.aks_cluster.kube_config[0].host
+  client_certificate     = base64decode(azurerm_kubernetes_cluster.aks_cluster.kube_config[0].client_certificate)
+  client_key             = base64decode(azurerm_kubernetes_cluster.aks_cluster.kube_config[0].client_key)
+  cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.aks_cluster.kube_config[0].cluster_ca_certificate)
 }
 
-# Virtual Network
-resource "azurerm_virtual_network" "vnet" {
-  name                = "aks-vnet"
-  address_space       = ["10.0.0.0/8"]
+# AKS Cluster
+resource "azurerm_kubernetes_cluster" "aks_cluster" {
+  name                = var.aks_cluster_name
   location            = azurerm_resource_group.aks_rg.location
   resource_group_name = azurerm_resource_group.aks_rg.name
+  dns_prefix          = "${var.aks_cluster_name}-dns"
+
+  kubernetes_version = var.aks_version
+
+  default_node_pool {
+    name           = "default"
+    vm_size        = var.node_vm_size
+    node_count     = var.node_count
+    vnet_subnet_id = azurerm_subnet.aks_subnet.id
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  network_profile {
+    network_plugin     = "azure"
+    network_policy     = "azure"
+    dns_service_ip     = "10.2.0.10"
+    service_cidr       = "10.2.0.0/24"
+    # docker_bridge_cidr = "172.17.0.1/16"
+    outbound_type      = "loadBalancer"
+  }
+
+  api_server_access_profile {
+    authorized_ip_ranges = var.trusted_ip_ranges
+  }
+
+
+  tags = {
+    Environment = "Production"
+  }
 }
 
-# Subnet for AKS with Service Endpoints
-resource "azurerm_subnet" "aks_subnet" {
-  name                 = "aks-subnet"
-  resource_group_name  = azurerm_resource_group.aks_rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = ["10.1.0.0/16"]
-  service_endpoints    = ["Microsoft.Storage"]
+# Create Kubernetes Secret using Key Vault
+data "azurerm_key_vault_secret" "twilio_auth_token" {
+  name         = azurerm_key_vault_secret.twilio_auth_token.name
+  key_vault_id = azurerm_key_vault.key_vault.id
 }
 
-# NAT Gateway
-resource "azurerm_nat_gateway" "aks_nat_gateway" {
-  name                = "aks-nat-gateway"
-  location            = azurerm_resource_group.aks_rg.location
-  resource_group_name = azurerm_resource_group.aks_rg.name
-  sku_name            = "Standard"
+resource "kubernetes_secret" "twilio_auth_token" {
+  metadata {
+    name = "twilio-auth-token"
+  }
+
+  data = {
+    twilio_auth_token = base64encode(data.azurerm_key_vault_secret.twilio_auth_token.value)
+  }
 }
 
-# Associate NAT Gateway with the AKS Subnet
-resource "azurerm_subnet_nat_gateway_association" "aks_subnet_nat_gateway" {
-  subnet_id      = azurerm_subnet.aks_subnet.id
-  nat_gateway_id = azurerm_nat_gateway.aks_nat_gateway.id
+# Kubernetes Deployment
+resource "kubernetes_deployment" "app_deployment" {
+  metadata {
+    name = "hello-world-app"
+    labels = {
+      app = "hello-world-app"
+    }
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "hello-world-app"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "hello-world-app"
+        }
+      }
+
+      spec {
+        container {
+          name  = "app"
+          image = var.docker_image
+
+          port {
+            container_port = var.application_port
+          }
+
+          env {
+            name = "twilio_auth_token"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret.twilio_auth_token.metadata[0].name
+                key  = "twilio_auth_token"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
-# Route Table for AKS
-resource "azurerm_route_table" "aks_route_table" {
-  name                = "aks-route-table"
-  location            = azurerm_resource_group.aks_rg.location
-  resource_group_name = azurerm_resource_group.aks_rg.name
+# Kubernetes Service
+resource "kubernetes_service" "app_service" {
+  metadata {
+    name = "hello-world-app-service"
+  }
+
+  spec {
+    selector = {
+      app = kubernetes_deployment.app_deployment.metadata[0].labels.app
+    }
+
+    port {
+      protocol    = "TCP"
+      port        = var.application_port
+      target_port = var.application_port
+    }
+
+    type = "LoadBalancer"
+  }
 }
 
-# Default route for outbound traffic through NAT Gateway
-resource "azurerm_route" "default_route" {
-  name                   = "default-route"
-  resource_group_name     = azurerm_resource_group.aks_rg.name
-  route_table_name        = azurerm_route_table.aks_route_table.name
-  address_prefix          = "0.0.0.0/0"
-  next_hop_in_ip_address  = azurerm_nat_gateway.aks_nat_gateway.id
-  next_hop_type           = "VirtualAppliance"
+# Network Policy to Deny All Traffic by Default
+resource "kubernetes_network_policy" "default_deny_all" {
+  metadata {
+    name      = "default-deny-all"
+    namespace = "default"
+  }
+
+  spec {
+    pod_selector {}
+
+    policy_types = ["Ingress", "Egress"]
+  }
 }
 
-# Associate Route Table with Subnet
-resource "azurerm_subnet_route_table_association" "aks_subnet_route_table" {
-  subnet_id      = azurerm_subnet.aks_subnet.id
-  route_table_id = azurerm_route_table.aks_route_table.id
+# Network Policy to Allow Ingress to the Application
+resource "kubernetes_network_policy" "allow_app_ingress" {
+  metadata {
+    name      = "allow-app-ingress"
+    namespace = "default"
+  }
+
+  spec {
+    pod_selector {
+      match_labels = {
+        app = "hello-world-app"
+      }
+    }
+
+    ingress {
+      from {
+        ip_block {
+          cidr = "0.0.0.0/0"  # Adjust as needed
+        }
+      }
+
+      ports {
+        port     = var.application_port
+        protocol = "TCP"
+      }
+    }
+
+    policy_types = ["Ingress"]
+  }
 }
 
-# Network Security Group (NSG)
-resource "azurerm_network_security_group" "aks_nsg" {
-  name                = "aks-nsg"
-  location            = azurerm_resource_group.aks_rg.location
-  resource_group_name = azurerm_resource_group.aks_rg.name
-}
+# Horizontal Pod Autoscaler
+resource "kubernetes_horizontal_pod_autoscaler" "app_hpa" {
+  metadata {
+    name = "hello-world-app-hpa"
+  }
 
-# Associate NSG with Subnet
-resource "azurerm_subnet_network_security_group_association" "aks_subnet_nsg" {
-  subnet_id                 = azurerm_subnet.aks_subnet.id
-  network_security_group_id = azurerm_network_security_group.aks_nsg.id
-}
+  spec {
+    max_replicas = 1
+    min_replicas = 1
 
-# Allow outbound egress for necessary ports (443, 53, etc.)
-resource "azurerm_network_security_rule" "allow_egress" {
-  name                        = "AllowEgress"
-  priority                    = 100
-  direction                   = "Outbound"
-  access                      = "Allow"
-  protocol                    = "Tcp"
-  source_port_range           = "*"
-  destination_port_ranges     = ["443", "53", "80"]  # Allow HTTPS, DNS, HTTP
-  source_address_prefix       = "*"
-  destination_address_prefix  = "0.0.0.0/0"
-  network_security_group_name = azurerm_network_security_group.aks_nsg.name
-  resource_group_name         = azurerm_resource_group.aks_rg.name
-}
+    scale_target_ref {
+      kind       = "Deployment"
+      name       = kubernetes_deployment.app_deployment.metadata[0].name
+      api_version = "apps/v1"
+    }
 
-# Allow inbound Kubernetes API traffic from trusted IP ranges
-resource "azurerm_network_security_rule" "allow_k8s_api" {
-  name                        = "AllowK8sAPI"
-  priority                    = 110
-  direction                   = "Inbound"
-  access                      = "Allow"
-  protocol                    = "Tcp"
-  source_port_range           = "*"
-  destination_port_ranges     = ["443"]
-  source_address_prefixes     = var.trusted_ip_ranges
-  destination_address_prefix  = "*"
-  network_security_group_name = azurerm_network_security_group.aks_nsg.name
-  resource_group_name         = azurerm_resource_group.aks_rg.name
+    target_cpu_utilization_percentage = 60
+  }
 }
