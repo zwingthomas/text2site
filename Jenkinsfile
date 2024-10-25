@@ -244,7 +244,12 @@ pipeline {
                                         """
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying Azure resources..."
-                                        sh "terraform destroy -auto-approve"
+                                        sh """
+                                        terraform destroy -auto-approve \
+                                            -var="twilio_auth_token=${twilio_auth_token}" \
+                                            -var="docker_image=${DOCKER_IMAGE_TAG}" \
+                                            -var="tenant_id=${ARM_TENANT_ID}"
+                                        """
                                     }
                                 }
                             }
