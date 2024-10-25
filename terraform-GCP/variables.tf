@@ -78,9 +78,10 @@ variable "services_cidr" {
   default     = "10.2.0.0/20"
 }
 
-variable "YOUR_TRUSTED_IP_RANGE" {
-  description = "Your trusted IP range for accessing the Kubernetes API and SSH"
+variable "TRUSTED_IP_RANGE" {
+  description = "Trusted IP range for accessing the Kubernetes API and SSH"
   type        = string
+  default     = "0.0.0.0/0"
 }
 
 variable "enable_logging" {
