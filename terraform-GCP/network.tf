@@ -4,10 +4,10 @@ resource "google_compute_network" "vpc_network" {
 }
 
 resource "google_compute_subnetwork" "subnet" {
-  name          = "${var.network_name}-subnet"
-  ip_cidr_range = var.subnet_cidr
-  region        = var.region
-  network       = google_compute_network.vpc_network.id
+  name                    = "${var.network_name}-subnet"
+  ip_cidr_range           = var.subnet_cidr
+  region                  = var.region
+  network                 = google_compute_network.vpc_network.id
   private_ip_google_access = true
 
   secondary_ip_range {
@@ -21,6 +21,7 @@ resource "google_compute_subnetwork" "subnet" {
   }
 }
 
+# Allow internal communication within the subnet
 resource "google_compute_firewall" "allow_internal" {
   name    = "${var.network_name}-allow-internal"
   network = google_compute_network.vpc_network.name
@@ -42,6 +43,7 @@ resource "google_compute_firewall" "allow_internal" {
   source_ranges = [var.subnet_cidr]
 }
 
+# Allow SSH from a trusted range
 resource "google_compute_firewall" "allow_ssh" {
   name    = "${var.network_name}-allow-ssh"
   network = google_compute_network.vpc_network.name
@@ -51,7 +53,20 @@ resource "google_compute_firewall" "allow_ssh" {
     ports    = ["22"]
   }
 
-  source_ranges = [var.YOUR_TRUSTED_IP_RANGE]
+  source_ranges = [var.trusted_ip_range]
+}
+
+# Firewall rule to allow outbound internet access (port 443 for HTTPS and other necessary ports)
+resource "google_compute_firewall" "allow_outbound" {
+  name    = "${var.network_name}-allow-outbound"
+  network = google_compute_network.vpc_network.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["443", "80"]  # Allow HTTP and HTTPS for outbound traffic
+  }
+
+  destination_ranges = ["0.0.0.0/0"]
 }
 
 # Cloud NAT configuration for outbound internet access
