@@ -34,7 +34,7 @@ resource "azurerm_route" "default_route" {
   resource_group_name     = azurerm_resource_group.aks_rg.name
   route_table_name        = azurerm_route_table.aks_route_table.name
   address_prefix          = "0.0.0.0/0"
-  next_hop_type           = "Internet"  # Adjust to 'Internet' instead of 'VirtualNetworkGateway'
+  next_hop_type           = "Internet"
 }
 
 # Associate Route Table with Subnet
@@ -64,7 +64,7 @@ resource "azurerm_network_security_rule" "allow_egress" {
   access                      = "Allow"
   protocol                    = "Tcp"
   source_port_range           = "*"
-  destination_port_ranges     = ["443", "53", "80"]  # Allow HTTPS, DNS, HTTP
+  destination_port_ranges     = ["443", "53", "80", "9000", "1194"]  # Allow HTTPS, using custom DNS servers, ensure they're accessible by the cluster nodes, DNS, HTTP, for tunneled secure communication between the nodes and the control plane.
   source_address_prefix       = "*"
   destination_address_prefix  = "0.0.0.0/0"
   network_security_group_name = azurerm_network_security_group.aks_nsg.name
@@ -79,7 +79,7 @@ resource "azurerm_network_security_rule" "allow_k8s_api" {
   access                      = "Allow"
   protocol                    = "Tcp"
   source_port_range           = "*"
-  destination_port_ranges     = ["443"]
+  destination_port_ranges     = ["80", "443"]
   source_address_prefixes     = var.trusted_ip_ranges
   destination_address_prefix  = "*"
   network_security_group_name = azurerm_network_security_group.aks_nsg.name
