@@ -17,7 +17,7 @@ resource "azurerm_kubernetes_cluster" "aks_cluster" {
   default_node_pool {
     name           = "default"
     vm_size        = var.node_vm_size
-    node_count     = 0
+    node_count     = var.node_count
     vnet_subnet_id = azurerm_subnet.aks_subnet.id
   }
 
@@ -38,23 +38,6 @@ resource "azurerm_kubernetes_cluster" "aks_cluster" {
     authorized_ip_ranges = var.trusted_ip_ranges
   }
 
-
-  tags = {
-    Environment = "Production"
-  }
-}
-
-
-# Attaching the existing VMSS to AKS as a node pool
-resource "azurerm_kubernetes_cluster_node_pool" "aks_vmss_node_pool" {
-  name                  = "userpool"
-  kubernetes_cluster_id = azurerm_kubernetes_cluster.aks_cluster.id
-  vm_size               = "Standard_DS2_v6"
-  node_count            = var.node_count
-  os_disk_size_gb       = 5
-  vnet_subnet_id        = azurerm_subnet.aks_subnet.id
-
-  max_pods            = 1
 
   tags = {
     Environment = "Production"
