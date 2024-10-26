@@ -50,6 +50,22 @@ resource "azurerm_network_security_group" "aks_nsg" {
   resource_group_name = azurerm_resource_group.aks_rg.name
 }
 
+# nsg was too restrictive. Check error and limit later
+resource "azurerm_network_security_rule" "allow_all_outbound" {
+  name                        = "AllowAllOutbound"
+  priority                    = 100
+  direction                   = "Outbound"
+  access                      = "Allow"
+  protocol                    = "*"
+  source_port_range           = "*"
+  destination_port_range      = "*"
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  network_security_group_name = azurerm_network_security_group.aks_nsg.name
+  resource_group_name         = azurerm_resource_group.aks_rg.name
+}
+
+
 # Associate NSG with Subnet
 resource "azurerm_subnet_network_security_group_association" "aks_subnet_nsg" {
   subnet_id                 = azurerm_subnet.aks_subnet.id
