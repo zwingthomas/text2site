@@ -73,19 +73,19 @@ resource "azurerm_subnet_network_security_group_association" "aks_subnet_nsg" {
 }
 
 # Allow outbound egress for necessary ports (443, 53, etc.)
-resource "azurerm_network_security_rule" "allow_egress" {
-  name                        = "AllowEgress"
-  priority                    = 100
-  direction                   = "Outbound"
-  access                      = "Allow"
-  protocol                    = "Tcp"
-  source_port_range           = "*"
-  destination_port_ranges     = ["443", "53", "80", "9000", "1194"]  # Allow HTTPS, using custom DNS servers, ensure they're accessible by the cluster nodes, DNS, HTTP, for tunneled secure communication between the nodes and the control plane.
-  source_address_prefix       = "*"
-  destination_address_prefix  = "0.0.0.0/0"
-  network_security_group_name = azurerm_network_security_group.aks_nsg.name
-  resource_group_name         = azurerm_resource_group.aks_rg.name
-}
+# resource "azurerm_network_security_rule" "allow_egress" {
+#   name                        = "AllowEgress"
+#   priority                    = 100
+#   direction                   = "Outbound"
+#   access                      = "Allow"
+#   protocol                    = "Tcp"
+#   source_port_range           = "*"
+#   destination_port_ranges     = ["443", "53", "80", "9000", "1194"]  # Allow HTTPS, using custom DNS servers, ensure they're accessible by the cluster nodes, DNS, HTTP, for tunneled secure communication between the nodes and the control plane.
+#   source_address_prefix       = "*"
+#   destination_address_prefix  = "0.0.0.0/0"
+#   network_security_group_name = azurerm_network_security_group.aks_nsg.name
+#   resource_group_name         = azurerm_resource_group.aks_rg.name
+# }
 
 # Allow inbound Kubernetes API traffic from trusted IP ranges
 resource "azurerm_network_security_rule" "allow_k8s_api" {
