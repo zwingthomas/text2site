@@ -51,17 +51,35 @@ pipeline {
                 expression { params.ACTION == 'deploy' }
             }
             steps {
-                script {
-                    echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
-                    try {
-                        sh """
-                        docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ./src
-                        """
-                        echo "Docker Image built successfully."
-                    } catch (Exception e) {
-                        echo "Docker build failed: ${e}"
-                        currentBuild.result = 'FAILURE'
-                        throw e
+                if (provider == 'azure') {
+                    script {
+                        echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                        try {
+                            sh """
+                            docker run --privileged --rm tonistiigi/binfmt --install all
+                            docker buildx build --platform linux/arm64 -t helloworldappregistry.azurecr.io/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} --push ./src
+                            """
+                            echo "Docker Image built successfully."
+                        } catch (Exception e) {
+                            echo "Docker build failed: ${e}"
+                            currentBuild.result = 'FAILURE'
+                            throw e
+                        }
+                    }
+                }
+                else{
+                    script {
+                        echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                        try {
+                            sh """
+                            docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ./src
+                            """
+                            echo "Docker Image built successfully."
+                        } catch (Exception e) {
+                            echo "Docker build failed: ${e}"
+                            currentBuild.result = 'FAILURE'
+                            throw e
+                        }
                     }
                 }
             }
