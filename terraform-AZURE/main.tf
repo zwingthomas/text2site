@@ -23,14 +23,6 @@ resource "azurerm_key_vault" "key_vault" {
   }
 }
 
-# Store Twilio Auth Token in Key Vault
-resource "azurerm_key_vault_secret" "twilio_auth_token" {
-  name         = "twilio-auth-token"
-  value        = var.twilio_auth_token
-  key_vault_id = azurerm_key_vault.key_vault.id
-  depends_on   = [azurerm_role_assignment.aks_key_vault_access, azurerm_role_assignment.aks_mi_key_vault_access, azurerm_role_assignment.aks_kubelet_key_vault_access]
-}
-
 # Grant AKS Managed Identity Access to Key Vault
 resource "azurerm_role_assignment" "aks_mi_key_vault_access" {
   scope                = azurerm_key_vault.key_vault.id
@@ -43,4 +35,12 @@ resource "azurerm_role_assignment" "aks_kubelet_key_vault_access" {
   scope                = azurerm_key_vault.key_vault.id
   role_definition_name = "Key Vault Reader"
   principal_id         = azurerm_kubernetes_cluster.aks_cluster.kubelet_identity[0].object_id
+}
+
+# Store Twilio Auth Token in Key Vault
+resource "azurerm_key_vault_secret" "twilio_auth_token" {
+  name         = "twilio-auth-token"
+  value        = var.twilio_auth_token
+  key_vault_id = azurerm_key_vault.key_vault.id
+  depends_on   = [azurerm_role_assignment.aks_mi_key_vault_access, azurerm_role_assignment.aks_kubelet_key_vault_access]
 }
