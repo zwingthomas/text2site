@@ -200,7 +200,7 @@ resource "kubernetes_horizontal_pod_autoscaler" "app_hpa" {
 # Reference an existing ACR
 data "azurerm_container_registry" "acr" {
   name                = var.acr_name
-  resource_group_name = var.resource_group_name
+  resource_group_name = "helloWorldApp"
 }
 
 # Assign AcrPull role to AKS managed identity
