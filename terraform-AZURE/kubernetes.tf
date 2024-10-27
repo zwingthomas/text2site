@@ -20,6 +20,10 @@ resource "azurerm_kubernetes_cluster" "aks_cluster" {
     node_count     = var.node_count
     vnet_subnet_id = azurerm_subnet.aks_subnet.id
     temporary_name_for_rotation = "hellotemp"
+
+    node_labels = {
+      "kubernetes.azure.com/amd64" = "true"
+    }
   }
 
   identity {
