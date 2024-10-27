@@ -37,10 +37,24 @@ resource "azurerm_role_assignment" "aks_kubelet_key_vault_access" {
   principal_id         = azurerm_kubernetes_cluster.aks_cluster.kubelet_identity[0].object_id
 }
 
+# Get the current Azure AD client (service principal) used by Terraform
+data "azuread_client" "current" {}
+
+# Assign Key Vault Administrator role to the Terraform service principal
+resource "azurerm_role_assignment" "terraform_kv_access" {
+  scope                = azurerm_key_vault.key_vault.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = data.azuread_client.current.object_id
+}
+
 # Store Twilio Auth Token in Key Vault
 resource "azurerm_key_vault_secret" "twilio_auth_token" {
   name         = "twilio-auth-token"
   value        = var.twilio_auth_token
   key_vault_id = azurerm_key_vault.key_vault.id
-  depends_on   = [azurerm_role_assignment.aks_mi_key_vault_access, azurerm_role_assignment.aks_kubelet_key_vault_access]
+  depends_on   = [
+    azurerm_role_assignment.terraform_kv_access,
+    azurerm_role_assignment.aks_mi_key_vault_access,
+    azurerm_role_assignment.aks_kubelet_key_vault_access
+  ]
 }
