@@ -239,7 +239,7 @@ pipeline {
                                         sh """
                                         terraform apply -auto-approve \
                                             -var="twilio_auth_token=${twilio_auth_token}" \
-                                            -var="docker_image=helloworldappregistry.azurecr.io/hello-world-repo:${DOCKER_IMAGE_TAG}" \
+                                            -var="docker_image=helloworldappregistry.azurecr.io/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" \
                                             -var="tenant_id=${ARM_TENANT_ID}"
                                         """
                                     } else if (params.ACTION == 'destroy') {
