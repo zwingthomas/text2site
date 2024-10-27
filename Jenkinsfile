@@ -64,11 +64,6 @@ pipeline {
                                 echo "Building Docker Image for ARM64: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                                 try {
                                     sh '''
-                                    set -euxo pipefail
-
-                                    # Display Docker version for debugging
-                                    docker version
-
                                     # Enable QEMU emulation
                                     docker run --privileged --rm tonistiigi/binfmt --install all
 
