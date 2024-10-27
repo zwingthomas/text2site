@@ -92,5 +92,11 @@ variable "key_vault_resource_group" {
 variable "aks_version" {
   description = "AKS Kubernetes version"
   type        = string
-  default = "1.30"
+  default     = "1.30"
+}
+
+variable "jenkins_ip" {
+  description = "The IP of the CICD pipeline you're running on Jenkins"
+  type        = string
+  default     = "98.82.181.79"
 }
