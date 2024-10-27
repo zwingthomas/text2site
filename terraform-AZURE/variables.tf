@@ -100,3 +100,9 @@ variable "jenkins_ip" {
   type        = string
   default     = "98.82.181.79"
 }
+
+variable "acr_name" {
+  description = "The name of the repository that stores the image"
+  type        = string
+  default     = "helloworldappregistry.azurecr.io"
+}

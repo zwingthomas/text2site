@@ -196,3 +196,16 @@ resource "kubernetes_horizontal_pod_autoscaler" "app_hpa" {
     target_cpu_utilization_percentage = 60
   }
 }
+
+# Reference an existing ACR
+data "azurerm_container_registry" "acr" {
+  name                = var.acr_name
+  resource_group_name = var.resource_group_name
+}
+
+# Assign AcrPull role to AKS managed identity
+resource "azurerm_role_assignment" "aks_acr_pull" {
+  scope                = data.azurerm_container_registry.acr.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_kubernetes_cluster.aks_cluster.identity[0].principal_id
+}
