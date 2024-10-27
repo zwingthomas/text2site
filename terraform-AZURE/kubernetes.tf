@@ -19,6 +19,7 @@ resource "azurerm_kubernetes_cluster" "aks_cluster" {
     vm_size        = var.node_vm_size
     node_count     = var.node_count
     vnet_subnet_id = azurerm_subnet.aks_subnet.id
+    temporary_name_for_rotation = "helloWorldAppTemp"
   }
 
   identity {
