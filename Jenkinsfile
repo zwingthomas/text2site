@@ -67,16 +67,28 @@ pipeline {
                         }
                     }
                     else{
-                        echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
-                        try {
-                            sh """
-                            docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ./src
-                            """
-                            echo "Docker Image built successfully."
-                        } catch (Exception e) {
-                            echo "Docker build failed: ${e}"
-                            currentBuild.result = 'FAILURE'
-                            throw e
+                        script {
+                            echo "Building Docker Image for ARM64: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                            try {
+                                sh """
+                                # Enable QEMU emulation
+                                docker run --privileged --rm tonistiigi/binfmt --install all
+
+                                # Create and use a new builder
+                                docker buildx create --use --name mybuilder
+
+                                # Build and push the ARM64 image
+                                docker buildx build --platform linux/arm64 -t ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} --push ./src
+                                """
+                                echo "Docker Image built and pushed successfully."
+                            } catch (Exception e) {
+                                echo "Docker build failed: ${e}"
+                                currentBuild.result = 'FAILURE'
+                                throw e
+                            } finally {
+                                // Clean up the builder
+                                sh "docker buildx rm mybuilder"
+                            }
                         }
                     }
                 }
