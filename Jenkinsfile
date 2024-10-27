@@ -52,56 +52,64 @@ pipeline {
             }
             steps {
                 script {
-                    if (provider == 'azure') {
-                        script {
-                            echo "Building Docker Image for ARM64: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                    def providers = []
+                    if (params.CLOUD_PROVIDER == 'all') {
+                        providers = ['aws', 'gcp', 'azure']
+                    } else {
+                        providers = [params.CLOUD_PROVIDER]
+                    }
+                    for (provider in providers) {
+                        if (provider == 'azure') {
+                            script {
+                                echo "Building Docker Image for ARM64: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                                try {
+                                    sh '''
+                                    set -euxo pipefail
+
+                                    # Display Docker version for debugging
+                                    docker version
+
+                                    # Enable QEMU emulation
+                                    docker run --privileged --rm tonistiigi/binfmt --install all
+
+                                    # Remove existing builder if it exists
+                                    docker buildx rm mybuilder || true
+
+                                    # Create and use a new builder
+                                    docker buildx create --use --name mybuilder
+
+                                    # Use the builder
+                                    docker buildx use mybuilder
+
+                                    # Build and push the ARM64 image with verbose output
+                                    docker buildx build --platform linux/arm64 \
+                                        --progress=plain --no-cache \
+                                        -t ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} \
+                                        --push .
+
+                                    # Clean up the builder
+                                    docker buildx rm mybuilder
+                                    '''
+                                    echo "Docker Image built and pushed successfully."
+                                } catch (Exception e) {
+                                    echo "Docker build failed with exception: ${e}"
+                                    currentBuild.result = 'FAILURE'
+                                    throw e
+                                }
+                            }
+                        }
+                        else{
+                            echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                             try {
-                                sh '''
-                                set -euxo pipefail
-
-                                # Display Docker version for debugging
-                                docker version
-
-                                # Enable QEMU emulation
-                                docker run --privileged --rm tonistiigi/binfmt --install all
-
-                                # Remove existing builder if it exists
-                                docker buildx rm mybuilder || true
-
-                                # Create and use a new builder
-                                docker buildx create --use --name mybuilder
-
-                                # Use the builder
-                                docker buildx use mybuilder
-
-                                # Build and push the ARM64 image with verbose output
-                                docker buildx build --platform linux/arm64 \
-                                    --progress=plain --no-cache \
-                                    -t ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} \
-                                    --push .
-
-                                # Clean up the builder
-                                docker buildx rm mybuilder
-                                '''
-                                echo "Docker Image built and pushed successfully."
+                                sh """
+                                docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ./src
+                                """
+                                echo "Docker Image built successfully."
                             } catch (Exception e) {
-                                echo "Docker build failed with exception: ${e}"
+                                echo "Docker build failed: ${e}"
                                 currentBuild.result = 'FAILURE'
                                 throw e
                             }
-                        }
-                    }
-                    else{
-                        echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
-                        try {
-                            sh """
-                            docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ./src
-                            """
-                            echo "Docker Image built successfully."
-                        } catch (Exception e) {
-                            echo "Docker build failed: ${e}"
-                            currentBuild.result = 'FAILURE'
-                            throw e
                         }
                     }
                 }
@@ -148,16 +156,17 @@ pipeline {
                                 docker push us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/hello-world-app/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
                                 """
                             }
-                        } else if (provider == 'azure') {
-                            echo "Pushing Docker Image to Azure Container Registry..."
-                            withCredentials([usernamePassword(credentialsId: env.AZURE_ACR_CREDENTIALS_ID, usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD')]) {
-                                sh """
-                                docker login ${env.AZURE_REGISTRY_NAME} -u $ACR_USERNAME -p $ACR_PASSWORD
-                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                                docker push ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                                """
-                            }
-                        }
+                        } 
+                        // else if (provider == 'azure') {
+                        //     echo "Pushing Docker Image to Azure Container Registry..."
+                        //     withCredentials([usernamePassword(credentialsId: env.AZURE_ACR_CREDENTIALS_ID, usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD')]) {
+                        //         sh """
+                        //         docker login ${env.AZURE_REGISTRY_NAME} -u $ACR_USERNAME -p $ACR_PASSWORD
+                        //         docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                        //         docker push ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                        //         """
+                        //     }
+                        // }
                     }
                 }
             }
