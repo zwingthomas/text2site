@@ -71,7 +71,7 @@ pipeline {
                                     docker buildx rm mybuilder || true
 
                                     # Create and use a new builder
-                                    docker buildx create --use --name mybuilder
+                                    docker buildx create --name mybuilder
 
                                     # Use the builder
                                     docker buildx use mybuilder
