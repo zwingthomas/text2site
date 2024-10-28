@@ -193,11 +193,6 @@ resource "kubernetes_network_policy" "allow_app_egress" {
           cidr = "0.0.0.0/0"
         }
       }
-
-      ports {
-        port     = 0  # 0 allows all ports
-        protocol = "TCP"
-      }
     }
 
     policy_types = ["Egress"]
