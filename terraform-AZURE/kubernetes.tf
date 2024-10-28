@@ -204,38 +204,6 @@ resource "kubernetes_network_policy" "allow_app_egress" {
   }
 }
 
-
-# Network Policy to Allow Ingress to the Application
-resource "kubernetes_network_policy" "allow_app_ingress" {
-  metadata {
-    name      = "allow-app-ingress"
-    namespace = "default"
-  }
-
-  spec {
-    pod_selector {
-      match_labels = {
-        app = "hello-world-app"
-      }
-    }
-
-    ingress {
-      from {
-        ip_block {
-          cidr = "0.0.0.0/0"  # Adjust as needed
-        }
-      }
-
-      ports {
-        port     = var.application_port
-        protocol = "TCP"
-      }
-    }
-
-    policy_types = ["Ingress"]
-  }
-}
-
 # Horizontal Pod Autoscaler
 resource "kubernetes_horizontal_pod_autoscaler" "app_hpa" {
   metadata {
