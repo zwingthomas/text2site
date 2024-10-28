@@ -37,7 +37,10 @@ resource "azurerm_role_assignment" "aks_mi_key_vault_access" {
 resource "azurerm_role_assignment" "aks_kubelet_key_vault_access" {
   scope                = azurerm_key_vault.key_vault.id
   role_definition_name = "Key Vault Reader"
-  principal_id         = azurerm_kubernetes_cluster.aks_cluster.kubelet_identity[0].client_id
+  principal_id         = azurerm_kubernetes_cluster.aks_cluster.kubelet_identity[0].object_id
+  depends_on = [
+    azurerm_kubernetes_cluster.aks_cluster
+  ]
 }
 
 # Store Twilio Auth Token in Key Vault
