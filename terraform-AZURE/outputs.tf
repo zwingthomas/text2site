@@ -15,4 +15,3 @@ output "load_balancer_ip" {
   value = data.kubernetes_service.app_service_status.status[0].load_balancer[0].ingress[0].ip
   description = "The external IP of the Kubernetes LoadBalancer service."
 }
-

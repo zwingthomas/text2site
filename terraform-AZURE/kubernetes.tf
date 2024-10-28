@@ -144,19 +144,66 @@ resource "kubernetes_service" "app_service" {
   }
 }
 
-# Network Policy to Deny All Traffic by Default
-resource "kubernetes_network_policy" "default_deny_all" {
+resource "kubernetes_network_policy" "allow_app_ingress" {
   metadata {
-    name      = "default-deny-all"
+    name      = "allow-app-ingress"
     namespace = "default"
   }
 
   spec {
-    pod_selector {}
+    pod_selector {
+      match_labels = {
+        app = "hello-world-app"
+      }
+    }
 
-    policy_types = ["Ingress", "Egress"]
+    ingress {
+      from {
+        ip_block {
+          cidr = "0.0.0.0/0"
+        }
+      }
+
+      ports {
+        port     = var.application_port
+        protocol = "TCP"
+      }
+    }
+
+    policy_types = ["Ingress"]
   }
 }
+
+resource "kubernetes_network_policy" "allow_app_egress" {
+  metadata {
+    name      = "allow-app-egress"
+    namespace = "default"
+  }
+
+  spec {
+    pod_selector {
+      match_labels = {
+        app = "hello-world-app"
+      }
+    }
+
+    egress {
+      to {
+        ip_block {
+          cidr = "0.0.0.0/0"
+        }
+      }
+
+      ports {
+        port     = 0  # 0 allows all ports
+        protocol = "TCP"
+      }
+    }
+
+    policy_types = ["Egress"]
+  }
+}
+
 
 # Network Policy to Allow Ingress to the Application
 resource "kubernetes_network_policy" "allow_app_ingress" {
