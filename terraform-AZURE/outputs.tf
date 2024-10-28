@@ -10,3 +10,9 @@ output "kube_config" {
 output "application_fqdn" {
   value = azurerm_kubernetes_cluster.aks_cluster.fqdn
 }
+
+output "load_balancer_ip" {
+  value = data.kubernetes_service.app_service_status.status[0].load_balancer.ingress[0].ip
+  description = "The external IP of the Kubernetes LoadBalancer service."
+}
+

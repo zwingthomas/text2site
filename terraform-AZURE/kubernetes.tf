@@ -49,6 +49,15 @@ resource "azurerm_kubernetes_cluster" "aks_cluster" {
   }
 }
 
+data "kubernetes_service" "app_service_status" {
+  metadata {
+    name      = kubernetes_service.app_service.metadata[0].name
+    namespace = "default"
+  }
+  depends_on = [azurerm_kubernetes_cluster.aks_cluster]
+}
+
+
 # Create Kubernetes Secret using Key Vault
 data "azurerm_key_vault_secret" "twilio_auth_token" {
   name         = azurerm_key_vault_secret.twilio_auth_token.name
@@ -220,7 +229,7 @@ resource "azurerm_role_assignment" "aks_acr_pull" {
 resource "azurerm_role_assignment" "aks_kubelet_acr_pull" {
   scope                = data.azurerm_container_registry.acr.id
   role_definition_name = "AcrPull"
-  principal_id         = azurerm_kubernetes_cluster.aks_cluster.kubelet_identity[0].object_id
+  principal_id         = azurerm_kubernetes_cluster.aks_cluster.kubelet_identity[0]._id
   depends_on = [
     azurerm_kubernetes_cluster.aks_cluster
   ]
