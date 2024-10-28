@@ -220,7 +220,7 @@ resource "azurerm_role_assignment" "aks_acr_pull" {
 resource "azurerm_role_assignment" "aks_kubelet_acr_pull" {
   scope                = data.azurerm_container_registry.acr.id
   role_definition_name = "AcrPull"
-  principal_id         = azurerm_kubernetes_cluster.aks_cluster.kubelet_identity[0].object_id
+  principal_id         = azurerm_kubernetes_cluster.aks_cluster.kubelet_identity[0].client_id
   depends_on = [
     azurerm_kubernetes_cluster.aks_cluster
   ]
