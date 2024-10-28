@@ -54,7 +54,7 @@ pipeline {
                 script {
                     def providers = []
                     if (params.CLOUD_PROVIDER == 'all') {
-                        providers = ['aws', 'gcp', 'azure']
+                        providers = ['azure', 'others']
                     } else {
                         providers = [params.CLOUD_PROVIDER]
                     }
@@ -71,7 +71,7 @@ pipeline {
                                     docker buildx rm mybuilder || true
 
                                     # Create and use a new builder
-                                    docker buildx create --name mybuilder
+                                    docker buildx create --use --name mybuilder
 
                                     # Use the builder
                                     docker buildx use mybuilder
@@ -92,8 +92,7 @@ pipeline {
                                     throw e
                                 }
                             }
-                        }
-                        else{
+                        } else{
                             echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                             try {
                                 sh """
