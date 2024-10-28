@@ -80,7 +80,7 @@ pipeline {
                                     docker buildx build --platform linux/arm64 \
                                         --progress=plain --no-cache \
                                         -t ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} \
-                                        --push .
+                                        --push ./src
 
                                     # Clean up the builder
                                     docker buildx rm mybuilder
