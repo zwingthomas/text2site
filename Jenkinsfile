@@ -63,7 +63,7 @@ pipeline {
                             script {
                                 echo "Building Docker Image for ARM64: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                                 try {
-                                    sh '''
+                                    sh """
                                     # Enable QEMU emulation
                                     docker run --privileged --rm tonistiigi/binfmt --install all
 
@@ -84,7 +84,7 @@ pipeline {
 
                                     # Clean up the builder
                                     docker buildx rm mybuilder
-                                    '''
+                                    """
                                     echo "Docker Image built and pushed successfully."
                                 } catch (Exception e) {
                                     echo "Docker build failed with exception: ${e}"
