@@ -95,10 +95,9 @@ resource "azurerm_network_security_rule" "allow_k8s_api" {
   access                      = "Allow"
   protocol                    = "Tcp"
   source_port_range           = "*"
-  destination_port_ranges     = ["80", "443"]
+  destination_port_ranges     = ["80", "443", "5000"]
   source_address_prefixes     = var.trusted_ip_ranges
   destination_address_prefix  = "*"
   network_security_group_name = azurerm_network_security_group.aks_nsg.name
   resource_group_name         = azurerm_resource_group.aks_rg.name
 }
-
