@@ -331,7 +331,7 @@ pipeline {
                             
                             // Fetch the LoadBalancer DNS (assuming it's a DNS name)
                             awsEndpoint = sh(
-                                script: "terraform output -raw load_balancer_dns",
+                                script: "terraform output -raw alb_dns_name",
                                 returnStdout: true
                             ).trim()
                         }
@@ -344,7 +344,7 @@ pipeline {
                             
                             // Fetch the LoadBalancer IP
                             gcpEndpoint = sh(
-                                script: "terraform output -raw load_balancer_ip",
+                                script: "terraform output -raw application_external_ip",
                                 returnStdout: true
                             ).trim()
                         }

@@ -86,7 +86,7 @@ variable "key_vault_name" {
 variable "key_vault_resource_group" {
   description = "Resource group for Key Vault"
   type        = string
-  default     = "hello-world-app-rg"
+  default     = "helloWorldApp"
 }
 
 variable "aks_version" {
