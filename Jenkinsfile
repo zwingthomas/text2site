@@ -326,8 +326,12 @@ pipeline {
                         // AWS Endpoint
                         def awsEndpoint = ''
                         dir('terraform-AWS') {
+                            // Initialize Terraform to access the remote backend
+                            sh 'terraform init -input=false -backend=true'
+                            
+                            // Fetch the LoadBalancer DNS (assuming it's a DNS name)
                             awsEndpoint = sh(
-                                script: "terraform output load_balancer_dns",
+                                script: "terraform output -raw load_balancer_dns",
                                 returnStdout: true
                             ).trim()
                         }
@@ -335,8 +339,12 @@ pipeline {
                         // GCP Endpoint
                         def gcpEndpoint = ''
                         dir('terraform-GCP') {
+                            // Initialize Terraform to access the remote backend
+                            sh 'terraform init -input=false -backend=true'
+                            
+                            // Fetch the LoadBalancer IP
                             gcpEndpoint = sh(
-                                script: "terraform output load_balancer_ip",
+                                script: "terraform output -raw load_balancer_ip",
                                 returnStdout: true
                             ).trim()
                         }
@@ -344,8 +352,12 @@ pipeline {
                         // Azure Endpoint
                         def azureEndpoint = ''
                         dir('terraform-AZURE') {
+                            // Initialize Terraform to access the remote backend
+                            sh 'terraform init -input=false -backend=true'
+                            
+                            // Fetch the LoadBalancer IP
                             azureEndpoint = sh(
-                                script: "terraform output load_balancer_ip",
+                                script: "terraform output -raw load_balancer_ip",
                                 returnStdout: true
                             ).trim()
                         }
