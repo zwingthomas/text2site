@@ -80,7 +80,7 @@ variable "enable_log_analytics" {
 variable "key_vault_name" {
   description = "Name of the Azure Key Vault"
   type        = string
-  default     = "hello-world-key-vault"
+  default     = "hello-world-key-vault-new"
 }
 
 variable "key_vault_resource_group" {

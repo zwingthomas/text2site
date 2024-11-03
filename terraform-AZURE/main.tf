@@ -15,6 +15,7 @@ resource "azurerm_key_vault" "key_vault" {
   resource_group_name         = var.key_vault_resource_group
   tenant_id                   = var.tenant_id
   sku_name                    = "standard"
+  # allow purges, do not keep keys in Azure
   # purge_protection_enabled    = true
   enable_rbac_authorization   = true
   network_acls {
