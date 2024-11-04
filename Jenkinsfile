@@ -316,13 +316,13 @@ pipeline {
                     echo "Setting up global load balancer and DNS..."
                     // Use a DNS provider or global load balancer that supports multi-cloud endpoints
                     // This example assumes using AWS Route 53 as the DNS provider
+                        // Collect the endpoints from each provider
+
                     withCredentials([
                         [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: env.AWS_CREDENTIALS_ID],
                         string(credentialsId: env.AWS_HOSTED_ZONE_ID_CRED_ID, variable: 'AWS_HOSTED_ZONE_ID'),
                         string(credentialsId: env.AWS_ACCOUNT_ID_CRED_ID, variable: 'AWS_ACCOUNT_ID')
                     ]) {
-                        // Collect the endpoints from each provider
-
                         // AWS Endpoint
                         def awsEndpoint = ''
                         dir('terraform-AWS') {
@@ -357,15 +357,23 @@ pipeline {
 
                         // Azure Endpoint
                         def azureEndpoint = ''
-                        dir('terraform-AZURE') {
-                            // Initialize Terraform to access the remote backend
-                            sh 'terraform init -input=false -backend=true'
-                            
-                            // Fetch the LoadBalancer IP
-                            azureEndpoint = sh(
-                                script: "terraform output -raw load_balancer_ip",
-                                returnStdout: true
-                            ).trim()
+                        withCredentials([
+                                    string(credentialsId: env.AZURE_CLIENT_ID_CRED_ID, variable: 'ARM_CLIENT_ID'),
+                                    string(credentialsId: env.AZURE_CLIENT_SECRET_CRED_ID, variable: 'ARM_CLIENT_SECRET'),
+                                    string(credentialsId: env.AZURE_SUBSCRIPTION_ID_CRED_ID, variable: 'ARM_SUBSCRIPTION_ID'),
+                                    string(credentialsId: env.AZURE_TENANT_ID_CRED_ID, variable: 'ARM_TENANT_ID'),
+                                    string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token')
+                                ]) {
+                                    dir('terraform-AZURE') {
+                                        // Initialize Terraform to access the remote backend
+                                        sh 'terraform init -input=false -backend=true'
+                                        
+                                        // Fetch the LoadBalancer IP
+                                        azureEndpoint = sh(
+                                            script: "terraform output -raw load_balancer_ip",
+                                            returnStdout: true
+                                        ).trim()
+                                    }
                         }
 
                         // Update Route 53 DNS records to point to the endpoints
