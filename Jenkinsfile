@@ -377,26 +377,57 @@ pipeline {
                         }
 
                         // Update Route 53 DNS records to point to the endpoints
-                        sh """
-                        aws route53 change-resource-record-sets --hosted-zone-id ${AWS_HOSTED_ZONE_ID} --change-batch '{
-                            "Comment": "Update record to add multi-cloud endpoints",
-                            "Changes": [
-                                {
-                                    "Action": "UPSERT",
-                                    "ResourceRecordSet": {
-                                        "Name": "${AWS_DOMAIN_NAME}.",
-                                        "Type": "A",
-                                        "TTL": 60,
-                                        "ResourceRecords": [
-                                            {"Value": "${awsEndpoint}"},
-                                            {"Value": "${gcpEndpoint}"},
-                                            {"Value": "${azureEndpoint}"}
-                                        ]
+                        withCredentials([string(credentialsId: 'aws-hosted-zone-id', variable: 'AWS_HOSTED_ZONE_ID')]) {
+                            sh """
+                            aws route53 change-resource-record-sets --hosted-zone-id ${AWS_HOSTED_ZONE_ID} --change-batch '{
+                                "Comment": "Update record to add multi-cloud endpoints",
+                                "Changes": [
+                                    {
+                                        "Action": "UPSERT",
+                                        "ResourceRecordSet": {
+                                            "Name": "${AWS_DOMAIN_NAME}.",
+                                            "Type": "CNAME",
+                                            "TTL": 60,
+                                            "ResourceRecords": [
+                                                {"Value": "${awsEndpoint}"}
+                                            ],
+                                            "Weight": 33,
+                                            "SetIdentifier": "aws-endpoint",
+                                            "Region": "us-east-1"
+                                        }
+                                    },
+                                    {
+                                        "Action": "UPSERT",
+                                        "ResourceRecordSet": {
+                                            "Name": "${AWS_DOMAIN_NAME}.",
+                                            "Type": "A",
+                                            "TTL": 60,
+                                            "ResourceRecords": [
+                                                {"Value": "${gcpEndpoint}"}
+                                            ],
+                                            "Weight": 33,
+                                            "SetIdentifier": "gcp-endpoint",
+                                            "Region": "us-central1"
+                                        }
+                                    },
+                                    {
+                                        "Action": "UPSERT",
+                                        "ResourceRecordSet": {
+                                            "Name": "${AWS_DOMAIN_NAME}.",
+                                            "Type": "A",
+                                            "TTL": 60,
+                                            "ResourceRecords": [
+                                                {"Value": "${azureEndpoint}"}
+                                            ],
+                                            "Weight": 34,
+                                            "SetIdentifier": "azure-endpoint",
+                                            "Region": "eastus"
+                                        }
                                     }
-                                }
-                            ]
-                        }'
-                        """
+                                ]
+                            }'
+                            """
+                        }
                     }
                 }
             }
