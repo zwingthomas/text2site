@@ -338,15 +338,21 @@ pipeline {
 
                         // GCP Endpoint
                         def gcpEndpoint = ''
-                        dir('terraform-GCP') {
-                            // Initialize Terraform to access the remote backend
-                            sh 'terraform init -input=false -backend=true'
-                            
-                            // Fetch the LoadBalancer IP
-                            gcpEndpoint = sh(
-                                script: "terraform output -raw application_external_ip",
-                                returnStdout: true
-                            ).trim()
+                        withCredentials([
+                                    file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS'),
+                                    string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token'),
+                                    string(credentialsId: 'gcp-project', variable: 'GCP_PROJECT_ID')
+                                ]) {
+                                    dir('terraform-GCP') {
+                                        // Initialize Terraform to access the remote backend
+                                        sh 'terraform init -input=false -backend=true'
+                                        
+                                        // Fetch the LoadBalancer IP
+                                        gcpEndpoint = sh(
+                                            script: "terraform output -raw application_external_ip",
+                                            returnStdout: true
+                                        ).trim()
+                                    }
                         }
 
                         // Azure Endpoint
