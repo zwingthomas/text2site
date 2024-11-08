@@ -62,18 +62,24 @@ pipeline {
                         if (provider == 'azure') {
                             script {
                                 // Use Jenkins credentials securely
-                                withCredentials([usernamePassword(credentialsId: 'azure-acr-credentials', usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD'), 
-                                                string(credentialsId: env.AZURE_REGISTRY_NAME, variable: 'AZURE_REGISTRY_URL')]) {
-                                    echo "Logging in to Azure Container Registry"
-
-                                    // Login to ACR
-                                    sh """
-                                    docker login ${AZURE_REGISTRY_URL} \
-                                        --username ${ACR_USERNAME} \
-                                        --password ${ACR_PASSWORD}
-                                    """
-                                    echo "Building Docker Image for ARM64: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                                withCredentials([usernamePassword(credentialsId: 'azure-acr-credentials', usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD'), string(credentialsId: env.AZURE_REGISTRY_NAME, variable: 'AZURE_REGISTRY_URL')]) {
                                     try {
+                                        echo "Logging in to Azure Container Registry"
+
+                                        // Login to ACR
+                                        sh """
+                                        docker login ${AZURE_REGISTRY_URL} \
+                                            --username ${ACR_USERNAME} \
+                                            --password ${ACR_PASSWORD}
+                                        """
+                                    }
+                                    catch (Exception e) {
+                                        echo "Docker Azure Container Registry authentication failed with exception: ${e}"
+                                        currentBuild.result = 'FAILURE'
+                                        throw e
+                                    }
+                                    try {
+                                        echo "Building Docker Image for ARM64: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                                         sh """
                                         # Enable QEMU emulation
                                         docker run --privileged --rm tonistiigi/binfmt --install all
@@ -86,7 +92,15 @@ pipeline {
 
                                         # Use the builder
                                         docker buildx use mybuilder
-
+                                        """
+                                    }
+                                    catch (Exception e) {
+                                        echo "Docker build presteps failed with exception: ${e}"
+                                        currentBuild.result = 'FAILURE'
+                                        throw e
+                                    }
+                                    try {
+                                        """
                                         # Build and push the ARM64 image with verbose output
                                         docker buildx build --platform linux/arm64 \
                                             --progress=plain --no-cache \
@@ -98,7 +112,7 @@ pipeline {
                                         """
                                         echo "Docker Image built and pushed successfully."
                                     } catch (Exception e) {
-                                        echo "Docker build failed with exception: ${e}"
+                                        echo "Docker build/push failed with exception: ${e}"
                                         currentBuild.result = 'FAILURE'
                                         throw e
                                     }
