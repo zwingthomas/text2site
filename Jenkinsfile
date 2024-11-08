@@ -62,7 +62,10 @@ pipeline {
                         if (provider == 'azure') {
                             script {
                                 // Use Jenkins credentials securely
-                                withCredentials([usernamePassword(credentialsId: 'azure-acr-credentials', usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD'), string(credentialsId: env.AZURE_REGISTRY_NAME, variable: 'AZURE_REGISTRY_URL')]) {
+                                withCredentials([
+                                    usernamePassword(credentialsId: 'azure-acr-credentials', usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD'),
+                                    string(credentialsId: env.AZURE_REGISTRY_NAME, variable: 'AZURE_REGISTRY_URL')
+                                ]) {
                                     try {
                                         echo "Logging in to Azure Container Registry"
 
@@ -100,11 +103,11 @@ pipeline {
                                         throw e
                                     }
                                     try {
-                                        """
+                                        sh """
                                         # Build and push the ARM64 image with verbose output
                                         docker buildx build --platform linux/arm64 \
                                             --progress=plain --no-cache \
-                                            -t ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} \
+                                            -t ${AZURE_REGISTRY_URL}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} \
                                             --push ./src
 
                                         # Clean up the builder
