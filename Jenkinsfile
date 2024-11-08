@@ -61,35 +61,48 @@ pipeline {
                     for (provider in providers) {
                         if (provider == 'azure') {
                             script {
-                                echo "Building Docker Image for ARM64: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
-                                try {
+                                def azureRegistryLoginServer = "${AZURE_REGISTRY_NAME}.azurecr.io"
+
+                                // Use Jenkins credentials securely
+                                withCredentials([usernamePassword(credentialsId: 'azure-acr-credentials', usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD')]) {
+                                    echo "Logging in to Azure Container Registry"
+
+                                    // Login to ACR
                                     sh """
-                                    # Enable QEMU emulation
-                                    docker run --privileged --rm tonistiigi/binfmt --install all
-
-                                    # Remove existing builder if it exists
-                                    docker buildx rm mybuilder || true
-
-                                    # Create and use a new builder
-                                    docker buildx create --use --name mybuilder
-
-                                    # Use the builder
-                                    docker buildx use mybuilder
-
-                                    # Build and push the ARM64 image with verbose output
-                                    docker buildx build --platform linux/arm64 \
-                                        --progress=plain --no-cache \
-                                        -t ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} \
-                                        --push ./src
-
-                                    # Clean up the builder
-                                    docker buildx rm mybuilder
+                                    docker login ${azureRegistryLoginServer} \
+                                        --username ${ACR_USERNAME} \
+                                        --password ${ACR_PASSWORD}
                                     """
-                                    echo "Docker Image built and pushed successfully."
-                                } catch (Exception e) {
-                                    echo "Docker build failed with exception: ${e}"
-                                    currentBuild.result = 'FAILURE'
-                                    throw e
+                                    echo "Building Docker Image for ARM64: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                                    try {
+                                        sh """
+                                        # Enable QEMU emulation
+                                        docker run --privileged --rm tonistiigi/binfmt --install all
+
+                                        # Remove existing builder if it exists
+                                        docker buildx rm mybuilder || true
+
+                                        # Create and use a new builder
+                                        docker buildx create --use --name mybuilder
+
+                                        # Use the builder
+                                        docker buildx use mybuilder
+
+                                        # Build and push the ARM64 image with verbose output
+                                        docker buildx build --platform linux/arm64 \
+                                            --progress=plain --no-cache \
+                                            -t ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} \
+                                            --push ./src
+
+                                        # Clean up the builder
+                                        docker buildx rm mybuilder
+                                        """
+                                        echo "Docker Image built and pushed successfully."
+                                    } catch (Exception e) {
+                                        echo "Docker build failed with exception: ${e}"
+                                        currentBuild.result = 'FAILURE'
+                                        throw e
+                                    }
                                 }
                             }
                         } else{
