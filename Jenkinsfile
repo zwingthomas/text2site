@@ -61,15 +61,14 @@ pipeline {
                     for (provider in providers) {
                         if (provider == 'azure') {
                             script {
-                                def azureRegistryLoginServer = "${AZURE_REGISTRY_NAME}.azurecr.io"
-
                                 // Use Jenkins credentials securely
-                                withCredentials([usernamePassword(credentialsId: 'azure-acr-credentials', usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD')]) {
+                                withCredentials([usernamePassword(credentialsId: 'azure-acr-credentials', usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD'), 
+                                                string(credentialsId: env.AZURE_REGISTRY_NAME, variable: 'AZURE_REGISTRY_URL')]) {
                                     echo "Logging in to Azure Container Registry"
 
                                     // Login to ACR
                                     sh """
-                                    docker login ${azureRegistryLoginServer} \
+                                    docker login ${AZURE_REGISTRY_URL} \
                                         --username ${ACR_USERNAME} \
                                         --password ${ACR_PASSWORD}
                                     """
