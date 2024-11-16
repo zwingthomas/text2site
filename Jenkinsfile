@@ -479,7 +479,7 @@ pipeline {
                                         "Action": "UPSERT",
                                         "ResourceRecordSet": {
                                             "Name": "${AWS_DOMAIN_NAME}.",
-                                            "Type": "CNAME",
+                                            "Type": "A",
                                             "TTL": 60,
                                             "ResourceRecords": [
                                                 {"Value": "${awsEndpoint}"}
