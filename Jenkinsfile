@@ -512,7 +512,7 @@ pipeline {
                                         "Type": "A",
                                         "TTL": 60,
                                         "ResourceRecords": [
-                                            {"Value": "${gcpEndpoint}"}
+                                            {"Value": "${gcpEndpoint}:5000"}
                                         ],
                                         "Weight": 33,
                                         "SetIdentifier": "aws-endpoint"
@@ -525,7 +525,7 @@ pipeline {
                                         "Type": "A",
                                         "TTL": 60,
                                         "ResourceRecords": [
-                                            {"Value": "${gcpEndpoint}"}
+                                            {"Value": "${gcpEndpoint}:5000"}
                                         ],
                                         "Weight": 33,
                                         "SetIdentifier": "gcp-endpoint"
@@ -538,7 +538,7 @@ pipeline {
                                         "Type": "A",
                                         "TTL": 60,
                                         "ResourceRecords": [
-                                            {"Value": "${azureEndpoint}"}
+                                            {"Value": "${azureEndpoint}:5000"}
                                         ],
                                         "Weight": 34,
                                         "SetIdentifier": "azure-endpoint"
