@@ -28,7 +28,6 @@ pipeline {
         GCP_CREDENTIALS_ID           = 'gcp-credentials-file'             // Jenkins credentials ID for GCP Service Account Key
 
         // Azure-specific environment variables
-        AZURE_REGISTRY_NAME          = 'helloworldappregistry.azurecr.io'
         AZURE_ACR_CREDENTIALS_ID     = 'azure-acr-credentials'            // Jenkins credentials ID for Azure ACR
        
         // Azure credentials IDs for Terraform
@@ -63,15 +62,14 @@ pipeline {
                             script {
                                 // Use Jenkins credentials securely
                                 withCredentials([
-                                    usernamePassword(credentialsId: 'azure-acr-credentials', usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD'),
-                                    string(credentialsId: env.AZURE_REGISTRY_NAME, variable: 'AZURE_REGISTRY_URL')
+                                    usernamePassword(credentialsId: 'azure-acr-credentials', usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD')
                                 ]) {
                                     try {
                                         echo "Logging in to Azure Container Registry"
 
                                         // Login to ACR
                                         sh """
-                                        docker login ${AZURE_REGISTRY_URL} \
+                                        docker login helloworldappregistry.azurecr.io \
                                             --username ${ACR_USERNAME} \
                                             --password ${ACR_PASSWORD}
                                         """
@@ -107,7 +105,7 @@ pipeline {
                                         # Build and push the ARM64 image with verbose output
                                         docker buildx build --platform linux/arm64 \
                                             --progress=plain --no-cache \
-                                            -t ${AZURE_REGISTRY_URL}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} \
+                                            -t helloworldappregistry.azurecr.io/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} \
                                             --push ./src
 
                                         # Clean up the builder
@@ -179,17 +177,7 @@ pipeline {
                                 docker push us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/hello-world-app/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
                                 """
                             }
-                        } 
-                        // else if (provider == 'azure') {
-                        //     echo "Pushing Docker Image to Azure Container Registry..."
-                        //     withCredentials([usernamePassword(credentialsId: env.AZURE_ACR_CREDENTIALS_ID, usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD')]) {
-                        //         sh """
-                        //         docker login ${env.AZURE_REGISTRY_NAME} -u $ACR_USERNAME -p $ACR_PASSWORD
-                        //         docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                        //         docker push ${env.AZURE_REGISTRY_NAME}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                        //         """
-                        //     }
-                        // }
+                        }
                     }
                 }
             }
