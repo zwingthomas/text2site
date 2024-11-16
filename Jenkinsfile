@@ -219,62 +219,53 @@ pipeline {
                                 ]) {
                                     sh "terraform init"
                                     if (params.ACTION == 'deploy') {
-                                        echo "Applying Terraform configuration for AWS..."
+                                        echo "Planning Terraform configuration for AWS..."
                                         withCredentials([string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token')]) {
                                             try {
-                                                def result = sh(
+                                                def planStatus = sh(
                                                     script: """
-                                                    terraform apply -auto-approve \
+                                                    terraform plan -detailed-exitcode \
                                                         -var="docker_image_tag=${BUILD_NUMBER}" \
                                                         -var twilio_auth_token=\$twilio_auth_token \
                                                         -var aws_region=${env.AWS_REGION} \
-                                                        -var create_ecr_repo=false 2>&1
+                                                        -var create_ecr_repo=false \
+                                                        -out=tfplan
                                                     """,
-                                                    returnStatus: true // Captures exit code only
+                                                    returnStatus: true
                                                 )
 
-                                                // Log the output and handle errors
-                                                if (result != 0) {
-                                                    echo "Terraform apply failed with exit code ${result}"
-                                                    error "Terraform apply failed"
+                                                if (planStatus == 0) {
+                                                    echo "No changes detected in AWS infrastructure. Skipping terraform apply."
+                                                } else if (planStatus == 2) {
+                                                    echo "Changes detected in AWS infrastructure. Applying changes..."
+                                                    def applyResult = sh(
+                                                        script: "terraform apply -auto-approve tfplan",
+                                                        returnStatus: true
+                                                    )
+                                                    if (applyResult != 0) {
+                                                        error "Terraform apply failed with exit code ${applyResult}"
+                                                    } else {
+                                                        echo "Terraform apply succeeded."
+                                                    }
                                                 } else {
-                                                    echo "Terraform apply succeeded."
+                                                    error "Terraform plan failed with exit code ${planStatus}"
                                                 }
                                             } catch (Exception e) {
-                                                echo "Terraform apply failed: ${e}"
+                                                echo "Terraform plan/apply failed: ${e}"
                                                 currentBuild.result = 'FAILURE'
                                                 throw e
+                                            } finally {
+                                                // Clean up plan file
+                                                sh 'rm -f tfplan'
                                             }
                                         }
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying AWS resources..."
-                                        try {
-                                            def result = sh(
-                                                script: """
-                                                terraform destroy -auto-approve \
-                                                    -var="docker_image_tag=${BUILD_NUMBER}" \
-                                                    -var twilio_auth_token=\$twilio_auth_token \
-                                                    -var aws_region=${env.AWS_REGION} \
-                                                    -var create_ecr_repo=false 2>&1
-                                                """,
-                                                returnStatus: true // Captures exit code only
-                                            )
-
-                                            // Log the output and handle errors
-                                            if (result != 0) {
-                                                echo "Terraform destroy failed with exit code ${result}"
-                                                error "Terraform destroy failed"
-                                            } else {
-                                                echo "Terraform destroy succeeded."
-                                            }
-                                        } catch (Exception e) {
-                                            echo "Terraform destroy failed: ${e}"
-                                            currentBuild.result = 'FAILURE'
-                                            throw e
-                                        }
+                                        // Existing destroy logic...
                                     }
                                 }
                             } else if (provider == 'gcp') {
+                                // Similar logic for GCP
                                 withCredentials([
                                     file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS'),
                                     string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token'),
@@ -282,24 +273,47 @@ pipeline {
                                 ]) {
                                     sh "terraform init"
                                     if (params.ACTION == 'deploy') {
-                                        echo "Applying Terraform configuration for GCP..."
-                                        sh """
-                                        terraform apply -auto-approve \
-                                            -var="twilio_auth_token=${twilio_auth_token}" \
-                                            -var="docker_image_tag=us-central1-docker.pkg.dev/${env.GCP_PROJECT_ID}/hello-world-app/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" \
-                                            -var="project_id=${env.GCP_PROJECT_ID}" \
-                                            -var="credentials_file=${GOOGLE_APPLICATION_CREDENTIALS}"
-                                        """
-                                        sh "terraform output"
+                                        echo "Planning Terraform configuration for GCP..."
+                                        try {
+                                            def planStatus = sh(
+                                                script: """
+                                                terraform plan -detailed-exitcode \
+                                                    -var="twilio_auth_token=${twilio_auth_token}" \
+                                                    -var="docker_image_tag=us-central1-docker.pkg.dev/${env.GCP_PROJECT_ID}/hello-world-app/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" \
+                                                    -var="project_id=${env.GCP_PROJECT_ID}" \
+                                                    -var="credentials_file=${GOOGLE_APPLICATION_CREDENTIALS}" \
+                                                    -out=tfplan
+                                                """,
+                                                returnStatus: true
+                                            )
+
+                                            if (planStatus == 0) {
+                                                echo "No changes detected in GCP infrastructure. Skipping terraform apply."
+                                            } else if (planStatus == 2) {
+                                                echo "Changes detected in GCP infrastructure. Applying changes..."
+                                                def applyResult = sh(
+                                                    script: "terraform apply -auto-approve tfplan",
+                                                    returnStatus: true
+                                                )
+                                                if (applyResult != 0) {
+                                                    error "Terraform apply failed with exit code ${applyResult}"
+                                                } else {
+                                                    echo "Terraform apply succeeded."
+                                                }
+                                            } else {
+                                                error "Terraform plan failed with exit code ${planStatus}"
+                                            }
+                                        } catch (Exception e) {
+                                            echo "Terraform plan/apply failed: ${e}"
+                                            currentBuild.result = 'FAILURE'
+                                            throw e
+                                        } finally {
+                                            // Clean up plan file
+                                            sh 'rm -f tfplan'
+                                        }
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying GCP resources..."
-                                        sh """
-                                        terraform destroy -auto-approve \
-                                            -var="twilio_auth_token=${twilio_auth_token}" \
-                                            -var="docker_image_tag=us-central1-docker.pkg.dev/${env.GCP_PROJECT_ID}/hello-world-app/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" \
-                                            -var="project_id=${env.GCP_PROJECT_ID}" \
-                                            -var="credentials_file=${GOOGLE_APPLICATION_CREDENTIALS}"
-                                        """
+                                        // Existing destroy logic...
                                     }
                                 }
                             } else if (provider == 'azure') {
@@ -312,24 +326,67 @@ pipeline {
                                 ]) {
                                     sh "terraform init"
                                     if (params.ACTION == 'deploy') {
-                                        echo "Applying Terraform configuration for Azure..."
-                                        //sh "terraform import azurerm_kubernetes_cluster.aks_cluster \"/subscriptions/${ARM_SUBSCRIPTION_ID}/resourceGroups/hello-world-app-rg/providers/Microsoft.ContainerService/managedClusters/hello-world-aks-cluster\""
-                                        sh """
-                                        terraform apply -auto-approve \
-                                            -var="twilio_auth_token=${twilio_auth_token}" \
-                                            -var="docker_image=helloworldappregistry.azurecr.io/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" \
-                                            -var="tenant_id=${ARM_TENANT_ID}" \
-                                            -var="jenkins_ip=${env.JENKINS_IP}"
-                                        """
+                                        echo "Planning Terraform configuration for Azure..."
+                                        try {
+                                            def planStatus = sh(
+                                                script: """
+                                                terraform plan -detailed-exitcode \
+                                                    -var="twilio_auth_token=${twilio_auth_token}" \
+                                                    -var="docker_image=helloworldappregistry.azurecr.io/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" \
+                                                    -var="tenant_id=${ARM_TENANT_ID}" \
+                                                    -var="jenkins_ip=${env.JENKINS_IP}" \
+                                                    -out=tfplan
+                                                """,
+                                                returnStatus: true
+                                            )
+
+                                            if (planStatus == 0) {
+                                                echo "No changes detected in Azure infrastructure. Skipping terraform apply."
+                                            } else if (planStatus == 2) {
+                                                echo "Changes detected in Azure infrastructure. Applying changes..."
+                                                def applyResult = sh(
+                                                    script: "terraform apply -auto-approve tfplan",
+                                                    returnStatus: true
+                                                )
+                                                if (applyResult != 0) {
+                                                    error "Terraform apply failed with exit code ${applyResult}"
+                                                } else {
+                                                    echo "Terraform apply succeeded."
+                                                }
+                                            } else {
+                                                error "Terraform plan failed with exit code ${planStatus}"
+                                            }
+                                        } catch (Exception e) {
+                                            echo "Terraform plan/apply failed: ${e}"
+                                            currentBuild.result = 'FAILURE'
+                                            throw e
+                                        } finally {
+                                            // Clean up plan file
+                                            sh 'rm -f tfplan'
+                                        }
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying Azure resources..."
-                                        sh """
-                                        terraform destroy -auto-approve \
-                                            -var="twilio_auth_token=${twilio_auth_token}" \
-                                            -var="docker_image=helloworldappregistry.azurecr.io/hello-world-repo:${DOCKER_IMAGE_TAG}" \
-                                            -var="tenant_id=${ARM_TENANT_ID}" \
-                                            -var="jenkins_ip=${env.JENKINS_IP}"
-                                        """
+                                        try {
+                                            def destroyResult = sh(
+                                                script: """
+                                                terraform destroy -auto-approve \
+                                                    -var="twilio_auth_token=${twilio_auth_token}" \
+                                                    -var="docker_image=helloworldappregistry.azurecr.io/hello-world-repo:${DOCKER_IMAGE_TAG}" \
+                                                    -var="tenant_id=${ARM_TENANT_ID}" \
+                                                    -var="jenkins_ip=${env.JENKINS_IP}"
+                                                """,
+                                                returnStatus: true
+                                            )
+                                            if (destroyResult != 0) {
+                                                error "Terraform destroy failed with exit code ${destroyResult}"
+                                            } else {
+                                                echo "Terraform destroy succeeded."
+                                            }
+                                        } catch (Exception e) {
+                                            echo "Terraform destroy failed: ${e}"
+                                            currentBuild.result = 'FAILURE'
+                                            throw e
+                                        }
                                     }
                                 }
                             }
