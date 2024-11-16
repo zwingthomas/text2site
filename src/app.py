@@ -49,4 +49,4 @@ def get_messages():
 
 if __name__ == '__main__':
     # Use a production-ready server (e.g., Gunicorn) in production environments
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=80)

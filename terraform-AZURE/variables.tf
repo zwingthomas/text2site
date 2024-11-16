@@ -62,7 +62,7 @@ variable "twilio_auth_token" {
 variable "application_port" {
   description = "Port on which the application runs"
   type        = number
-  default     = 5000
+  default     = 80
 }
 
 variable "trusted_ip_ranges" {

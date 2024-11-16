@@ -20,7 +20,7 @@ resource "aws_ecs_task_definition" "task" {
       essential = true
       portMappings = [
         {
-          containerPort = 5000
+          containerPort = 80
           protocol      = "tcp"
         }
       ]
@@ -39,7 +39,7 @@ resource "aws_ecs_task_definition" "task" {
         }
       }
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:5000/ || exit 1"]
+        command     = ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3

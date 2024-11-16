@@ -37,7 +37,7 @@ resource "aws_ecs_service" "service" {
   load_balancer {
     target_group_arn = aws_lb_target_group.app_tg.arn
     container_name   = "app"
-    container_port   = 5000
+    container_port   = 80
   }
 
   depends_on = [

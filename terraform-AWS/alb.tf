@@ -31,7 +31,7 @@ resource "aws_lb_listener" "http" {
 # See ecs_service.tf
 resource "aws_lb_target_group" "app_tg" {
   name        = "${var.project_name}-tg"
-  port        = 5000 # the port we will recieve traffic
+  port        = 80 # the port we will recieve traffic
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = aws_vpc.main.id
