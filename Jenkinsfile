@@ -428,8 +428,7 @@ pipeline {
                                                 {"Value": "${awsEndpoint}"}
                                             ],
                                             "Weight": 33,
-                                            "SetIdentifier": "aws-endpoint",
-                                            "Region": "us-east-1"
+                                            "SetIdentifier": "aws-endpoint"
                                         }
                                     },
                                     {
@@ -442,8 +441,7 @@ pipeline {
                                                 {"Value": "${gcpEndpoint}"}
                                             ],
                                             "Weight": 33,
-                                            "SetIdentifier": "gcp-endpoint",
-                                            "Region": "us-central1"
+                                            "SetIdentifier": "gcp-endpoint"
                                         }
                                     },
                                     {
@@ -456,8 +454,7 @@ pipeline {
                                                 {"Value": "${azureEndpoint}"}
                                             ],
                                             "Weight": 34,
-                                            "SetIdentifier": "azure-endpoint",
-                                            "Region": "eastus"
+                                            "SetIdentifier": "azure-endpoint"
                                         }
                                     }
                                 ]
