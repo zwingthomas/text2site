@@ -98,7 +98,6 @@ variable "aks_version" {
 variable "jenkins_ip" {
   description = "The IP of the CICD pipeline you're running on Jenkins"
   type        = string
-  default     = "98.82.181.79"
 }
 
 variable "acr_name" {

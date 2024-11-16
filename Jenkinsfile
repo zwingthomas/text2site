@@ -7,6 +7,8 @@ pipeline {
     }
 
     environment {
+        JENKINS_IP = sh(script: "echo \$JENKINS_IP", returnStdout: true).trim()
+
         // Common environment variables
         DOCKER_IMAGE_NAME            = 'hello-world-app'
         DOCKER_IMAGE_TAG             = "${env.BUILD_NUMBER}"
@@ -38,6 +40,13 @@ pipeline {
     }
 
     stages {
+        
+        stage('Print JENKINS_IP') {
+            steps {
+                echo "JENKINS_IP is: ${env.JENKINS_IP}"
+            }
+        }
+
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/zwingthomas/Text2Site.git'
@@ -291,7 +300,8 @@ pipeline {
                                     string(credentialsId: env.AZURE_CLIENT_SECRET_CRED_ID, variable: 'ARM_CLIENT_SECRET'),
                                     string(credentialsId: env.AZURE_SUBSCRIPTION_ID_CRED_ID, variable: 'ARM_SUBSCRIPTION_ID'),
                                     string(credentialsId: env.AZURE_TENANT_ID_CRED_ID, variable: 'ARM_TENANT_ID'),
-                                    string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token')
+                                    string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token'),
+                                    string(credentialsId: env.JENKINS_IP, variable: 'jenkins_ip')
                                 ]) {
                                     sh "terraform init"
                                     if (params.ACTION == 'deploy') {
@@ -301,7 +311,8 @@ pipeline {
                                         terraform apply -auto-approve \
                                             -var="twilio_auth_token=${twilio_auth_token}" \
                                             -var="docker_image=helloworldappregistry.azurecr.io/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" \
-                                            -var="tenant_id=${ARM_TENANT_ID}"
+                                            -var="tenant_id=${ARM_TENANT_ID}" \
+                                            -var="jenkins_ip=${jenkins_ip}"
                                         """
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying Azure resources..."
