@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'ACTION', choices: ['deploy', 'destroy'], description: 'Select action to perform')
-        choice(name: 'CLOUD_PROVIDER', choices: ['gcp', 'aws', 'azure', 'all'], description: 'Select cloud provider(s)')
+        choice(name: 'ACTION', choices: ['deploy', 'destroy', 'rebalance'], description: 'Select action to perform')
+        choice(name: 'CLOUD_PROVIDER', choices: ['gcp', 'aws', 'azure', 'all'], description: 'Select cloud provider(s) (ignored if ACTION is rebalance)')
     }
 
     environment {
@@ -17,12 +17,12 @@ pipeline {
         TWILIO_AUTH_TOKEN_CRED_ID    = 'twilio-auth-token'                // Jenkins credentials ID for Twilio Auth Token
 
         // AWS-specific environment variables
-        AWS_REGION                   = 'us-east-1'                        
-        AWS_ECR_REPO_NAME            = 'hello-world-app-repo'                 
+        AWS_REGION                   = 'us-east-1'
+        AWS_ECR_REPO_NAME            = 'hello-world-app-repo'
         AWS_CREDENTIALS_ID           = 'aws-credentials'                  // Jenkins credentials ID for AWS
         AWS_ACCOUNT_ID_CRED_ID       = 'aws-account-id'                   // Jenkins credentials ID for AWS Account ID
         AWS_HOSTED_ZONE_ID_CRED_ID   = 'aws-hosted-zone-id'               // Jenkins credentials ID for AWS Hosted Zone ID
-        AWS_DOMAIN_NAME              =  "${APPLICATION_URL}"
+        AWS_DOMAIN_NAME              = "${APPLICATION_URL}"
 
         // GCP-specific environment variables
         GCP_PROJECT_ID               = 'gcp-project'                      // Jenkins credentials ID for GCP Project
@@ -30,7 +30,7 @@ pipeline {
 
         // Azure-specific environment variables
         AZURE_ACR_CREDENTIALS_ID     = 'azure-acr-credentials'            // Jenkins credentials ID for Azure ACR
-       
+
         // Azure credentials IDs for Terraform
         AZURE_CLIENT_ID_CRED_ID         = 'azure-client-id'               // Jenkins credentials ID for Azure Client ID
         AZURE_CLIENT_SECRET_CRED_ID     = 'azure-client-secret'           // Jenkins credentials ID for Azure Client Secret
@@ -39,7 +39,7 @@ pipeline {
     }
 
     stages {
-        
+
         stage('Get Jenkins Public IP') {
             steps {
                 script {
@@ -64,7 +64,10 @@ pipeline {
         // Only build and push Docker image if the action is 'deploy'
         stage('Build Docker Image') {
             when {
-                expression { params.ACTION == 'deploy' }
+                allOf {
+                    expression { params.ACTION == 'deploy' }
+                    not { expression { params.CLOUD_PROVIDER == 'rebalance' } }
+                }
             }
             steps {
                 script {
@@ -136,7 +139,7 @@ pipeline {
                                     }
                                 }
                             }
-                        } else{
+                        } else {
                             echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                             try {
                                 sh """
@@ -156,7 +159,10 @@ pipeline {
 
         stage('Push to Container Registries') {
             when {
-                expression { params.ACTION == 'deploy' }
+                allOf {
+                    expression { params.ACTION == 'deploy' }
+                    not { expression { params.CLOUD_PROVIDER == 'rebalance' } }
+                }
             }
             steps {
                 script {
@@ -182,10 +188,12 @@ pipeline {
                             }
                         } else if (provider == 'gcp') {
                             echo "Pushing Docker Image to GCP Container Registry..."
-                            
+
                             // Use withCredentials to retrieve both GCP credentials and GCP project ID
-                            withCredentials([file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS'),
-                                            string(credentialsId: 'gcp-project', variable: 'GCP_PROJECT_ID')]) {
+                            withCredentials([
+                                file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS'),
+                                string(credentialsId: 'gcp-project', variable: 'GCP_PROJECT_ID')
+                            ]) {
                                 sh """
                                 gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
                                 gcloud config set project ${GCP_PROJECT_ID}
@@ -201,6 +209,9 @@ pipeline {
         }
 
         stage('Terraform Init and Apply/Destroy') {
+            when {
+                not { expression { params.ACTION == 'rebalance' } }
+            }
             steps {
                 script {
                     def providers = []
@@ -261,7 +272,27 @@ pipeline {
                                         }
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying AWS resources..."
-                                        // Existing destroy logic...
+                                        try {
+                                            def destroyResult = sh(
+                                                script: """
+                                                terraform destroy -auto-approve \
+                                                    -var="docker_image_tag=${BUILD_NUMBER}" \
+                                                    -var twilio_auth_token=\$twilio_auth_token \
+                                                    -var aws_region=${env.AWS_REGION} \
+                                                    -var create_ecr_repo=false
+                                                """,
+                                                returnStatus: true
+                                            )
+                                            if (destroyResult != 0) {
+                                                error "Terraform destroy failed with exit code ${destroyResult}"
+                                            } else {
+                                                echo "Terraform destroy succeeded."
+                                            }
+                                        } catch (Exception e) {
+                                            echo "Terraform destroy failed: ${e}"
+                                            currentBuild.result = 'FAILURE'
+                                            throw e
+                                        }
                                     }
                                 }
                             } else if (provider == 'gcp') {
@@ -313,7 +344,27 @@ pipeline {
                                         }
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying GCP resources..."
-                                        // Existing destroy logic...
+                                        try {
+                                            def destroyResult = sh(
+                                                script: """
+                                                terraform destroy -auto-approve \
+                                                    -var="twilio_auth_token=${twilio_auth_token}" \
+                                                    -var="docker_image_tag=us-central1-docker.pkg.dev/${env.GCP_PROJECT_ID}/hello-world-app/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" \
+                                                    -var="project_id=${env.GCP_PROJECT_ID}" \
+                                                    -var="credentials_file=${GOOGLE_APPLICATION_CREDENTIALS}"
+                                                """,
+                                                returnStatus: true
+                                            )
+                                            if (destroyResult != 0) {
+                                                error "Terraform destroy failed with exit code ${destroyResult}"
+                                            } else {
+                                                echo "Terraform destroy succeeded."
+                                            }
+                                        } catch (Exception e) {
+                                            echo "Terraform destroy failed: ${e}"
+                                            currentBuild.result = 'FAILURE'
+                                            throw e
+                                        }
                                     }
                                 }
                             } else if (provider == 'azure') {
@@ -396,134 +447,113 @@ pipeline {
             }
         }
 
-        // Only set up the global load balancer if deploying to all providers
+        // Only set up the global load balancer if deploying to all providers or rebalancing
         stage('Set Up Global Load Balancer') {
             when {
-                allOf {
-                    expression { params.ACTION == 'deploy' }
-                    expression { params.CLOUD_PROVIDER == 'all' }
+                anyOf {
+                    allOf {
+                        expression { params.ACTION == 'deploy' }
+                        expression { params.CLOUD_PROVIDER == 'all' }
+                    }
+                    expression { params.ACTION == 'rebalance' }
                 }
             }
             steps {
                 script {
                     echo "Setting up global load balancer and DNS..."
-                    // Use a DNS provider or global load balancer that supports multi-cloud endpoints
-                    // This example assumes using AWS Route 53 as the DNS provider
-                        // Collect the endpoints from each provider
+                    def awsEndpoint = ''
+                    def gcpEndpoint = ''
+                    def azureEndpoint = ''
 
+                    // Fetch endpoints from each provider
                     withCredentials([
                         [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: env.AWS_CREDENTIALS_ID],
-                        string(credentialsId: env.AWS_HOSTED_ZONE_ID_CRED_ID, variable: 'AWS_HOSTED_ZONE_ID'),
-                        string(credentialsId: env.AWS_ACCOUNT_ID_CRED_ID, variable: 'AWS_ACCOUNT_ID')
+                        string(credentialsId: env.AWS_HOSTED_ZONE_ID_CRED_ID, variable: 'AWS_HOSTED_ZONE_ID')
                     ]) {
                         // AWS Endpoint
-                        def awsEndpoint = ''
                         dir('terraform-AWS') {
-                            // Initialize Terraform to access the remote backend
                             sh 'terraform init -input=false -backend=true'
-                            
-                            // Fetch the LoadBalancer DNS (assuming it's a DNS name)
-                            awsEndpoint = sh(
-                                script: "terraform output -raw alb_dns_name",
-                                returnStdout: true
-                            ).trim()
+                            awsEndpoint = sh(script: "terraform output -raw alb_dns_name", returnStdout: true).trim()
                         }
 
                         // GCP Endpoint
-                        def gcpEndpoint = ''
                         withCredentials([
-                                    file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS'),
-                                    string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token'),
-                                    string(credentialsId: 'gcp-project', variable: 'GCP_PROJECT_ID')
-                                ]) {
-                                    dir('terraform-GCP') {
-                                        // Initialize Terraform to access the remote backend
-                                        sh 'terraform init -input=false -backend=true'
-                                        
-                                        // Fetch the LoadBalancer IP
-                                        gcpEndpoint = sh(
-                                            script: "terraform output -raw application_external_ip",
-                                            returnStdout: true
-                                        ).trim()
-                                    }
+                            file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS'),
+                            string(credentialsId: 'gcp-project', variable: 'GCP_PROJECT_ID')
+                        ]) {
+                            dir('terraform-GCP') {
+                                sh 'terraform init -input=false -backend=true'
+                                gcpEndpoint = sh(script: "terraform output -raw application_external_ip", returnStdout: true).trim()
+                            }
                         }
 
                         // Azure Endpoint
-                        def azureEndpoint = ''
                         withCredentials([
-                                    string(credentialsId: env.AZURE_CLIENT_ID_CRED_ID, variable: 'ARM_CLIENT_ID'),
-                                    string(credentialsId: env.AZURE_CLIENT_SECRET_CRED_ID, variable: 'ARM_CLIENT_SECRET'),
-                                    string(credentialsId: env.AZURE_SUBSCRIPTION_ID_CRED_ID, variable: 'ARM_SUBSCRIPTION_ID'),
-                                    string(credentialsId: env.AZURE_TENANT_ID_CRED_ID, variable: 'ARM_TENANT_ID'),
-                                    string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token')
-                                ]) {
-                                    dir('terraform-AZURE') {
-                                        // Initialize Terraform to access the remote backend
-                                        sh 'terraform init -input=false -backend=true'
-                                        
-                                        // Fetch the LoadBalancer IP
-                                        azureEndpoint = sh(
-                                            script: "terraform output -raw load_balancer_ip",
-                                            returnStdout: true
-                                        ).trim()
-                                    }
+                            string(credentialsId: env.AZURE_CLIENT_ID_CRED_ID, variable: 'ARM_CLIENT_ID'),
+                            string(credentialsId: env.AZURE_CLIENT_SECRET_CRED_ID, variable: 'ARM_CLIENT_SECRET'),
+                            string(credentialsId: env.AZURE_SUBSCRIPTION_ID_CRED_ID, variable: 'ARM_SUBSCRIPTION_ID'),
+                            string(credentialsId: env.AZURE_TENANT_ID_CRED_ID, variable: 'ARM_TENANT_ID')
+                        ]) {
+                            dir('terraform-AZURE') {
+                                sh 'terraform init -input=false -backend=true'
+                                azureEndpoint = sh(script: "terraform output -raw load_balancer_ip", returnStdout: true).trim()
+                            }
                         }
 
                         // Update Route 53 DNS records to point to the endpoints
-                        withCredentials([string(credentialsId: 'aws-hosted-zone-id', variable: 'AWS_HOSTED_ZONE_ID')]) {
-                            sh """
-                            aws route53 change-resource-record-sets --hosted-zone-id ${AWS_HOSTED_ZONE_ID} --change-batch '{
-                                "Comment": "Update record to add multi-cloud endpoints",
-                                "Changes": [
-                                    {
-                                        "Action": "UPSERT",
-                                        "ResourceRecordSet": {
-                                            "Name": "${AWS_DOMAIN_NAME}.",
-                                            "Type": "A",
-                                            "TTL": 60,
-                                            "ResourceRecords": [
-                                                {"Value": "${awsEndpoint}"}
-                                            ],
-                                            "Weight": 33,
-                                            "SetIdentifier": "aws-endpoint"
-                                        }
-                                    },
-                                    {
-                                        "Action": "UPSERT",
-                                        "ResourceRecordSet": {
-                                            "Name": "${AWS_DOMAIN_NAME}.",
-                                            "Type": "A",
-                                            "TTL": 60,
-                                            "ResourceRecords": [
-                                                {"Value": "${gcpEndpoint}"}
-                                            ],
-                                            "Weight": 33,
-                                            "SetIdentifier": "gcp-endpoint"
-                                        }
-                                    },
-                                    {
-                                        "Action": "UPSERT",
-                                        "ResourceRecordSet": {
-                                            "Name": "${AWS_DOMAIN_NAME}.",
-                                            "Type": "A",
-                                            "TTL": 60,
-                                            "ResourceRecords": [
-                                                {"Value": "${azureEndpoint}"}
-                                            ],
-                                            "Weight": 34,
-                                            "SetIdentifier": "azure-endpoint"
-                                        }
+                        sh """
+                        aws route53 change-resource-record-sets --hosted-zone-id ${AWS_HOSTED_ZONE_ID} --change-batch '{
+                            "Comment": "Update record to add multi-cloud endpoints",
+                            "Changes": [
+                                {
+                                    "Action": "UPSERT",
+                                    "ResourceRecordSet": {
+                                        "Name": "${AWS_DOMAIN_NAME}.",
+                                        "Type": "A",
+                                        "TTL": 60,
+                                        "ResourceRecords": [
+                                            {"Value": "${gcpEndpoint}"}
+                                        ],
+                                        "Weight": 33,
+                                        "SetIdentifier": "aws-endpoint"
                                     }
-                                ]
-                            }'
-                            """
-                        }
+                                },
+                                {
+                                    "Action": "UPSERT",
+                                    "ResourceRecordSet": {
+                                        "Name": "${AWS_DOMAIN_NAME}.",
+                                        "Type": "A",
+                                        "TTL": 60,
+                                        "ResourceRecords": [
+                                            {"Value": "${gcpEndpoint}"}
+                                        ],
+                                        "Weight": 33,
+                                        "SetIdentifier": "gcp-endpoint"
+                                    }
+                                },
+                                {
+                                    "Action": "UPSERT",
+                                    "ResourceRecordSet": {
+                                        "Name": "${AWS_DOMAIN_NAME}.",
+                                        "Type": "A",
+                                        "TTL": 60,
+                                        "ResourceRecords": [
+                                            {"Value": "${azureEndpoint}"}
+                                        ],
+                                        "Weight": 34,
+                                        "SetIdentifier": "azure-endpoint"
+                                    }
+                                }
+                            ]
+                        }'
+                        """
+                        echo "Load balancer set up successfully."
                     }
                 }
             }
         }
 
-        // Only perform verification if deploying
+        // Only perform verification if deploying to all providers
         stage('Verification') {
             when {
                 allOf {
