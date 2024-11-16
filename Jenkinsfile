@@ -7,7 +7,6 @@ pipeline {
     }
 
     environment {
-        JENKINS_IP = sh(script: "echo \$JENKINS_IP", returnStdout: true).trim()
 
         // Common environment variables
         DOCKER_IMAGE_NAME            = 'hello-world-app'
@@ -41,6 +40,15 @@ pipeline {
 
     stages {
         
+        stage('Get Jenkins Public IP') {
+            steps {
+                script {
+                    env.JENKINS_IP = sh(script: "curl -s http://checkip.amazonaws.com/", returnStdout: true).trim()
+                    echo "Retrieved JENKINS_IP: ${env.JENKINS_IP}"
+                }
+            }
+        }
+
         stage('Print JENKINS_IP') {
             steps {
                 echo "JENKINS_IP is: ${env.JENKINS_IP}"
@@ -300,8 +308,7 @@ pipeline {
                                     string(credentialsId: env.AZURE_CLIENT_SECRET_CRED_ID, variable: 'ARM_CLIENT_SECRET'),
                                     string(credentialsId: env.AZURE_SUBSCRIPTION_ID_CRED_ID, variable: 'ARM_SUBSCRIPTION_ID'),
                                     string(credentialsId: env.AZURE_TENANT_ID_CRED_ID, variable: 'ARM_TENANT_ID'),
-                                    string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token'),
-                                    string(credentialsId: env.JENKINS_IP, variable: 'jenkins_ip')
+                                    string(credentialsId: env.TWILIO_AUTH_TOKEN_CRED_ID, variable: 'twilio_auth_token')
                                 ]) {
                                     sh "terraform init"
                                     if (params.ACTION == 'deploy') {
@@ -312,7 +319,7 @@ pipeline {
                                             -var="twilio_auth_token=${twilio_auth_token}" \
                                             -var="docker_image=helloworldappregistry.azurecr.io/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" \
                                             -var="tenant_id=${ARM_TENANT_ID}" \
-                                            -var="jenkins_ip=${jenkins_ip}"
+                                            -var="jenkins_ip=${env.JENKINS_IP}"
                                         """
                                     } else if (params.ACTION == 'destroy') {
                                         echo "Destroying Azure resources..."
@@ -320,7 +327,8 @@ pipeline {
                                         terraform destroy -auto-approve \
                                             -var="twilio_auth_token=${twilio_auth_token}" \
                                             -var="docker_image=helloworldappregistry.azurecr.io/hello-world-repo:${DOCKER_IMAGE_TAG}" \
-                                            -var="tenant_id=${ARM_TENANT_ID}"
+                                            -var="tenant_id=${ARM_TENANT_ID}" \
+                                            -var="jenkins_ip=${env.JENKINS_IP}"
                                         """
                                     }
                                 }
