@@ -11,7 +11,7 @@ pipeline {
         // Common environment variables
         DOCKER_IMAGE_NAME            = 'hello-world-app'
         DOCKER_IMAGE_TAG             = "${env.BUILD_NUMBER}"
-        APPLICATION_URL              = 'text18449410220anything-zwinger.org'
+        APPLICATION_URL              = 'zwingers.us'
 
         // Credentials IDs (these are not the secrets themselves)
         TWILIO_AUTH_TOKEN_CRED_ID    = 'twilio-auth-token'                // Jenkins credentials ID for Twilio Auth Token
