@@ -15,8 +15,4 @@ I learned a decent amount about aws with this exercise. Especially when it comes
 Sincerely, thank you. 
 I hope you had a great weekend!
 
-p.s. I opted for ecs since k8s seems overkill (ecs is more cost effective as well in this case) and I wanted to show off container skills still.# text2site
-# text2site
-# text2site
-# text2site
-# text2site
+p.s. I opted for ecs since k8s seems overkill (ecs is more cost effective as well in this case) and I wanted to show off container skills still.
