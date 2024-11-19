@@ -511,7 +511,6 @@ pipeline {
                                     "ResourceRecordSet": {
                                         "Name": "${AWS_DOMAIN_NAME}.",
                                         "Type": "A",
-                                        "TTL": 60,
                                         "AliasTarget": {
                                             "HostedZoneId": "${AWS_ENDPOINT_HOSTED_ZONE_ID}",
                                             "DNSName": "${awsEndpoint}",
