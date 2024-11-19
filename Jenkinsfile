@@ -374,6 +374,9 @@ pipeline {
                                                     -var="docker_image=helloworldappregistry.azurecr.io/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" \
                                                     -var="tenant_id=${ARM_TENANT_ID}" \
                                                     -var="jenkins_ip=${env.JENKINS_IP}" \
+                                                    -var="client_id=${ARM_CLIENT_ID}" \
+                                                    -var="client_secret=${ARM_CLIENT_SECRET}" \
+                                                    -var="subscription_id=${ARM_SUBSCRIPTION_ID}"
                                                     -out=tfplan
                                                 """,
                                                 returnStatus: true
@@ -412,7 +415,10 @@ pipeline {
                                                     -var="twilio_auth_token=${twilio_auth_token}" \
                                                     -var="docker_image=helloworldappregistry.azurecr.io/hello-world-repo:${DOCKER_IMAGE_TAG}" \
                                                     -var="tenant_id=${ARM_TENANT_ID}" \
-                                                    -var="jenkins_ip=${env.JENKINS_IP}"
+                                                    -var="jenkins_ip=${env.JENKINS_IP}" \
+                                                    -var="client_id=${ARM_CLIENT_ID}" \
+                                                    -var="client_secret=${ARM_CLIENT_SECRET}" \
+                                                    -var="subscription_id=${ARM_SUBSCRIPTION_ID}"
                                                 """,
                                                 returnStatus: true
                                             )
