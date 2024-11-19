@@ -14,3 +14,8 @@ output "ecr_repository_url" {
 output "load_balancer_dns" {
   value = aws_lb.alb.dns_name
 }
+
+output "alb_hosted_zone_id" {
+  value = aws_lb.alb.zone_id
+  description = "The Route 53 Hosted Zone ID for the ALB"
+}

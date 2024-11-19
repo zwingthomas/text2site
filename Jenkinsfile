@@ -474,6 +474,7 @@ pipeline {
                         dir('terraform-AWS') {
                             sh 'terraform init -input=false -backend=true'
                             awsEndpoint = sh(script: "terraform output -raw alb_dns_name", returnStdout: true).trim()
+                            AWS_ENDPOINT_HOSTED_ZONE_ID = sh(script: "terraform output -raw alb_hosted_zone_id", returnStdout: true).trim()
                         }
 
                         // GCP Endpoint
@@ -509,11 +510,13 @@ pipeline {
                                     "Action": "UPSERT",
                                     "ResourceRecordSet": {
                                         "Name": "${AWS_DOMAIN_NAME}.",
-                                        "Type": "A",
+                                        "Type": "CNAME",
                                         "TTL": 60,
-                                        "ResourceRecords": [
-                                            {"Value": "${gcpEndpoint}"}
-                                        ],
+                                        "AliasTarget": {
+                                            "HostedZoneId": "${AWS_ENDPOINT_HOSTED_ZONE_ID}",
+                                            "DNSName": "${awsEndpoint}",
+                                            "EvaluateTargetHealth": true
+                                        },
                                         "Weight": 33,
                                         "SetIdentifier": "aws-endpoint"
                                     }
