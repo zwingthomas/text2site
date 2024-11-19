@@ -152,6 +152,21 @@ pipeline {
                                 currentBuild.result = 'FAILURE'
                                 throw e
                             }
+                            echo "Pushing Docker Image to GCP Container Registry..."
+
+                            // Use withCredentials to retrieve both GCP credentials and GCP project ID
+                            withCredentials([
+                                file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS'),
+                                string(credentialsId: 'gcp-project', variable: 'GCP_PROJECT_ID')
+                            ]) {
+                                sh """
+                                gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+                                gcloud config set project ${GCP_PROJECT_ID}
+                                gcloud auth configure-docker us-central1-docker.pkg.dev
+                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/hello-world-app/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                                docker push us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/hello-world-app/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                                """
+                            }
                         } else if (provider == 'aws') {
                             echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                             try {
@@ -174,21 +189,6 @@ pipeline {
                                 echo "Docker build failed: ${e}"
                                 currentBuild.result = 'FAILURE'
                                 throw e
-                            }
-                            echo "Pushing Docker Image to GCP Container Registry..."
-
-                            // Use withCredentials to retrieve both GCP credentials and GCP project ID
-                            withCredentials([
-                                file(credentialsId: env.GCP_CREDENTIALS_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS'),
-                                string(credentialsId: 'gcp-project', variable: 'GCP_PROJECT_ID')
-                            ]) {
-                                sh """
-                                gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
-                                gcloud config set project ${GCP_PROJECT_ID}
-                                gcloud auth configure-docker us-central1-docker.pkg.dev
-                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/hello-world-app/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                                docker push us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/hello-world-app/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                                """
                             }
                         }
                     }

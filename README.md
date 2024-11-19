@@ -9,10 +9,11 @@ This code automatically deploys when merged or pushed to main when using the Jen
 Note: Verification is expected to fail in the pipeline till Route 53 DNS is set up.
 
 
-### To the reviewers:
-I learned a decent amount about aws with this exercise. Especially when it comes to Route 53 which still has my certificates pending at the time I write this. I truly enjoyed this activity and now I have a great personal project (that isn't in a private repo for the fun side thing me and a friend do) to showcase my skills with Terraform, Ansible, and Jenkins. I really appreciate the inspiration. 
+### To the viewers:
+After standing this up please run the following to confirm it is up on all 3 infrastructures:
 
-Sincerely, thank you. 
-I hope you had a great weekend!
-
-p.s. I opted for ecs since k8s seems overkill (ecs is more cost effective as well in this case) and I wanted to show off container skills still.
+while true; do
+  IP=$(host -t A zwingers.us 8.8.8.8 | awk '/has address/ { print $4 }' | head -n 1)
+  curl -s http://$IP | sed -n 's/.*<h1>\(.*\)<\/h1>.*/\1/p'
+  sleep 2
+done
