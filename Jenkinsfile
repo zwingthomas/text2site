@@ -376,7 +376,7 @@ pipeline {
                                                     -var="jenkins_ip=${env.JENKINS_IP}" \
                                                     -var="client_id=${ARM_CLIENT_ID}" \
                                                     -var="client_secret=${ARM_CLIENT_SECRET}" \
-                                                    -var="subscription_id=${ARM_SUBSCRIPTION_ID}"
+                                                    -var="subscription_id=${ARM_SUBSCRIPTION_ID}" \
                                                     -out=tfplan
                                                 """,
                                                 returnStatus: true
