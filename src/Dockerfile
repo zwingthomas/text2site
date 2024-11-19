@@ -2,6 +2,9 @@
 
 FROM python:3.8-slim-buster 
 
+ARG APP_ENV
+ENV APP_ENV=${APP_ENV}
+
 WORKDIR /app
 
 COPY requirements.txt requirements.txt

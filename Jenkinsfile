@@ -62,7 +62,7 @@ pipeline {
         }
 
         // Only build and push Docker image if the action is 'deploy'
-        stage('Build Docker Image') {
+        stage('Build Docker Image and Push to Registries') {
             when {
                 allOf {
                     expression { params.ACTION == 'deploy' }
@@ -73,7 +73,7 @@ pipeline {
                 script {
                     def providers = []
                     if (params.CLOUD_PROVIDER == 'all') {
-                        providers = ['azure', 'others']
+                        providers = ['azure', 'gcp', 'aws']
                     } else {
                         providers = [params.CLOUD_PROVIDER]
                     }
@@ -124,6 +124,7 @@ pipeline {
                                         sh """
                                         # Build and push the ARM64 image with verbose output
                                         docker buildx build --platform linux/arm64 \
+                                            --build-arg APP_ENV=AZURE \
                                             --progress=plain --no-cache \
                                             -t helloworldappregistry.azurecr.io/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} \
                                             --push ./src
@@ -139,11 +140,11 @@ pipeline {
                                     }
                                 }
                             }
-                        } else {
+                        } else if (provider == 'gcp') {
                             echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                             try {
                                 sh """
-                                docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ./src
+                                docker build -t --build-arg APP_ENV=GCP ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ./src
                                 """
                                 echo "Docker Image built successfully."
                             } catch (Exception e) {
@@ -151,42 +152,29 @@ pipeline {
                                 currentBuild.result = 'FAILURE'
                                 throw e
                             }
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Push to Container Registries') {
-            when {
-                allOf {
-                    expression { params.ACTION == 'deploy' }
-                    not { expression { params.CLOUD_PROVIDER == 'rebalance' } }
-                }
-            }
-            steps {
-                script {
-                    def providers = []
-                    if (params.CLOUD_PROVIDER == 'all') {
-                        providers = ['aws', 'gcp', 'azure']
-                    } else {
-                        providers = [params.CLOUD_PROVIDER]
-                    }
-
-                    for (provider in providers) {
-                        if (provider == 'aws') {
-                            echo "Pushing Docker Image to AWS ECR..."
-                            withCredentials([
-                                [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: env.AWS_CREDENTIALS_ID],
-                                string(credentialsId: env.AWS_ACCOUNT_ID_CRED_ID, variable: 'AWS_ACCOUNT_ID')
-                            ]) {
+                        } else if (provider == 'aws') {
+                            echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                            try {
                                 sh """
-                                aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com
-                                docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/${env.AWS_ECR_REPO_NAME}:${DOCKER_IMAGE_TAG}
-                                docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/${env.AWS_ECR_REPO_NAME}:${DOCKER_IMAGE_TAG}
+                                docker build -t --build-arg APP_ENV=AWS ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ./src 
                                 """
+                                echo "Docker Image built successfully."
+                                echo "Pushing Docker Image to AWS ECR..."
+                                withCredentials([
+                                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: env.AWS_CREDENTIALS_ID],
+                                    string(credentialsId: env.AWS_ACCOUNT_ID_CRED_ID, variable: 'AWS_ACCOUNT_ID')
+                                ]) {
+                                    sh """
+                                    aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com
+                                    docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/${env.AWS_ECR_REPO_NAME}:${DOCKER_IMAGE_TAG}
+                                    docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/${env.AWS_ECR_REPO_NAME}:${DOCKER_IMAGE_TAG}
+                                    """
+                                }
+                            } catch (Exception e) {
+                                echo "Docker build failed: ${e}"
+                                currentBuild.result = 'FAILURE'
+                                throw e
                             }
-                        } else if (provider == 'gcp') {
                             echo "Pushing Docker Image to GCP Container Registry..."
 
                             // Use withCredentials to retrieve both GCP credentials and GCP project ID

@@ -39,8 +39,10 @@ def sms_reply():
 
 @app.route('/')
 def home():
+    # Display which cloud provider we're on
+    app_env = os.environ.get('APP_ENV', 'development')
     # Render the page where we'll load messages asynchronously
-    return render_template('index.html')
+    return render_template('index.html', app_env=app_env)
 
 @app.route('/get_messages', methods=['GET'])
 def get_messages():
