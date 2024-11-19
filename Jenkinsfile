@@ -144,7 +144,7 @@ pipeline {
                             echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                             try {
                                 sh """
-                                docker build -t --build-arg APP_ENV=GCP ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ./src
+                                docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} --build-arg APP_ENV=GCP ./src
                                 """
                                 echo "Docker Image built successfully."
                             } catch (Exception e) {
@@ -156,7 +156,7 @@ pipeline {
                             echo "Building Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                             try {
                                 sh """
-                                docker build -t --build-arg APP_ENV=AWS ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ./src 
+                                docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} --build-arg APP_ENV=AWS ./src 
                                 """
                                 echo "Docker Image built successfully."
                                 echo "Pushing Docker Image to AWS ECR..."
