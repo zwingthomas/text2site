@@ -19,6 +19,7 @@
                 .then(response => response.json())
                 .then(data => {
                     const messageList = document.getElementById('message-list');
+                    messageList.innerHTML = ''; // Clear the current list
 
                     data.forEach(message => {
                         const listItem = document.createElement('li');
