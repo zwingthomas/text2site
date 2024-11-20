@@ -26,7 +26,7 @@ resource "aws_ecs_task_definition" "task" {
       ]
       environment = [
         {
-          name  = "TWILIO_AUTH_TOKEN"
+          name  = "twilio_auth_token"
           value = var.twilio_auth_token
         }
       ]
