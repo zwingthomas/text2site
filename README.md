@@ -12,8 +12,10 @@ Note: Verification is expected to fail in the pipeline till Route 53 DNS is set 
 ### To the viewers:
 After standing this up please run the following to confirm it is up on all 3 infrastructures:
 
+```
 while true; do
   IP=$(host -t A zwingers.us 8.8.8.8 | awk '/has address/ { print $4 }' | head -n 1)
   curl -s http://$IP | sed -n 's/.*<h1>\(.*\)<\/h1>.*/\1/p'
   sleep 2
 done
+```
